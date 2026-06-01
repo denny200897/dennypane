@@ -1,0 +1,15 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+backend/dennypanel.db
+backend/.env
+backend/data/
+
+# Node / Next
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# OS
+.DS_Store
