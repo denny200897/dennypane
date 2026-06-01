@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Server, Loader2 } from "lucide-react";
+import { Server, Loader2, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [needOtp, setNeedOtp] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -21,10 +23,15 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await api.login(username, password);
+      await api.login(username, password, needOtp ? otp : undefined);
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "登入失敗");
+      if (err.message === "OTP_REQUIRED") {
+        setNeedOtp(true);
+        setError("");
+      } else {
+        setError(err.message || "登入失敗");
+      }
     } finally {
       setLoading(false);
     }
@@ -46,7 +53,12 @@ export default function LoginPage() {
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">使用者名稱</Label>
-              <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} />
+              <Input
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={needOtp}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">密碼</Label>
@@ -55,14 +67,34 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={needOtp}
               />
             </div>
+            {needOtp && (
+              <div className="space-y-2">
+                <Label htmlFor="otp" className="flex items-center gap-1.5">
+                  <ShieldCheck className="size-4 text-primary" /> 兩步驟驗證碼
+                </Label>
+                <Input
+                  id="otp"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="6 位數驗證碼"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground">請輸入驗證器 App 上顯示的 6 位數字</p>
+              </div>
+            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={loading} className="w-full">
               {loading && <Loader2 className="animate-spin" />}
-              {loading ? "登入中…" : "登入"}
+              {loading ? "登入中…" : needOtp ? "驗證並登入" : "登入"}
             </Button>
-            <p className="text-center text-xs text-muted-foreground">預設帳密：admin / dennypanel</p>
+            {!needOtp && (
+              <p className="text-center text-xs text-muted-foreground">預設帳密：admin / dennypanel</p>
+            )}
           </form>
         </CardContent>
       </Card>

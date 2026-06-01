@@ -1,0 +1,48 @@
+# dennyPanel — production stack: backend (FastAPI) + frontend (Next.js) + nginx
+#
+#   cp .env.example .env   # then edit secrets
+#   docker compose up -d --build
+#
+# Open http://<server-ip>/  (or put a TLS terminator / your domain in front).
+
+services:
+  backend:
+    build: ./backend
+    environment:
+      DENNY_SECRET_KEY: ${DENNY_SECRET_KEY:?set DENNY_SECRET_KEY in .env}
+      DENNY_ADMIN_USERNAME: ${DENNY_ADMIN_USERNAME:-admin}
+      DENNY_ADMIN_PASSWORD: ${DENNY_ADMIN_PASSWORD:-dennypanel}
+      DENNY_DATABASE_URL: sqlite:////data/dennypanel.db
+      DENNY_SITES_ROOT: /opt/dennypanel/sites
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock   # manage host Docker
+      - denny_data:/data                            # SQLite DB
+      - denny_sites:/opt/dennypanel/sites           # managed site files
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Leave empty: the terminal uses the same origin via the nginx proxy.
+        NEXT_PUBLIC_BACKEND_WS: ${NEXT_PUBLIC_BACKEND_WS:-}
+    environment:
+      BACKEND_URL: http://backend:8000   # Next.js /api rewrite target
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "${DENNY_HTTP_PORT:-80}:80"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+volumes:
+  denny_data:
+  denny_sites:

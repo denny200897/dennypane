@@ -14,11 +14,30 @@ class UserOut(BaseModel):
     id: int
     username: str
     is_admin: bool
+    totp_enabled: bool
 
 
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str = Field(min_length=6)
+
+
+class UsernameChange(BaseModel):
+    current_password: str
+    new_username: str = Field(min_length=3, max_length=64)
+
+
+class TwoFASetupOut(BaseModel):
+    secret: str
+    otpauth_uri: str
+
+
+class TwoFAVerify(BaseModel):
+    code: str
+
+
+class TwoFADisable(BaseModel):
+    password: str
 
 
 # ---- Docker ----

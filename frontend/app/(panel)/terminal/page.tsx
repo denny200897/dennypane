@@ -5,11 +5,14 @@ import { getToken } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import "@xterm/xterm/css/xterm.css";
 
-// Backend websocket origin. In dev the API runs on :8000; override via env.
+// Backend websocket origin.
+// - If NEXT_PUBLIC_BACKEND_WS is set (dev points it at :8000), use it.
+// - Otherwise use the same origin, so it works behind a reverse proxy that
+//   forwards /api/* (including the WebSocket upgrade) to the backend.
 function wsBase() {
   if (process.env.NEXT_PUBLIC_BACKEND_WS) return process.env.NEXT_PUBLIC_BACKEND_WS;
   const proto = location.protocol === "https:" ? "wss" : "ws";
-  return `${proto}://${location.hostname}:8000`;
+  return `${proto}://${location.host}`;
 }
 
 export default function TerminalPage() {

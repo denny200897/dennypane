@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 
 from app.api.routes import (
     auth,
@@ -23,8 +23,25 @@ from app.models import models  # noqa: F401  (register models on Base)
 from app.models.models import User
 
 
+def _ensure_columns() -> None:
+    """Tiny additive migration: add new columns to existing tables (SQLite)."""
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+    existing = {c["name"] for c in inspector.get_columns("users")}
+    additions = {
+        "totp_secret": "VARCHAR(64) DEFAULT ''",
+        "totp_enabled": "BOOLEAN DEFAULT 0",
+    }
+    with engine.begin() as conn:
+        for col, ddl in additions.items():
+            if col not in existing:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {ddl}"))
+
+
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)
+    _ensure_columns()
     with SessionLocal() as db:
         if not db.scalar(select(User)):
             db.add(

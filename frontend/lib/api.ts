@@ -48,15 +48,41 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  async login(username: string, password: string) {
+  async login(username: string, password: string, otp?: string) {
     const body = new URLSearchParams({ username, password });
+    if (otp) body.set("otp", otp);
     const res = await fetch("/api/auth/login", { method: "POST", body });
-    if (!res.ok) throw new ApiError(res.status, "Incorrect username or password");
+    if (!res.ok) {
+      let detail = "帳號或密碼錯誤";
+      try {
+        detail = (await res.json()).detail || detail;
+      } catch {}
+      throw new ApiError(res.status, detail);
+    }
     const data = await res.json();
     setToken(data.access_token);
     return data;
   },
-  me: () => request<{ id: number; username: string; is_admin: boolean }>("/auth/me"),
+  me: () =>
+    request<{ id: number; username: string; is_admin: boolean; totp_enabled: boolean }>("/auth/me"),
+  changePassword: (current_password: string, new_password: string) =>
+    request("/auth/password", {
+      method: "POST",
+      body: JSON.stringify({ current_password, new_password }),
+    }),
+  async changeUsername(current_password: string, new_username: string) {
+    const data = await request<{ access_token: string }>("/auth/username", {
+      method: "POST",
+      body: JSON.stringify({ current_password, new_username }),
+    });
+    setToken(data.access_token);
+    return data;
+  },
+  setup2fa: () => request<{ secret: string; otpauth_uri: string }>("/auth/2fa/setup", { method: "POST" }),
+  enable2fa: (code: string) =>
+    request("/auth/2fa/enable", { method: "POST", body: JSON.stringify({ code }) }),
+  disable2fa: (password: string) =>
+    request("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ password }) }),
   systemOverview: () => request<any>("/system/overview"),
   processes: (limit = 8) => request<any[]>(`/system/processes?limit=${limit}`),
   containers: () => request<any[]>("/docker/containers?all=true"),
