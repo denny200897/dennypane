@@ -36,9 +36,9 @@ export default function DatabasesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Databases</h1>
+        <h1 className="text-2xl font-bold tracking-tight">資料庫</h1>
         <p className="text-sm text-muted-foreground">
-          MySQL / MariaDB / Postgres servers discovered from your Docker containers.
+          從您的 Docker 容器中探索到的 MySQL / MariaDB / Postgres 伺服器。
         </p>
       </div>
 
@@ -58,14 +58,14 @@ export default function DatabasesPage() {
               </div>
               <Button variant="outline" size="sm" onClick={() => toggle(s.id)}>
                 {open[s.id] ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-                {open[s.id] ? "Hide" : "Databases"}
+                {open[s.id] ? "隱藏" : "資料庫"}
               </Button>
             </CardHeader>
             {open[s.id] && (
               <CardContent>
                 <ul className="grid grid-cols-2 gap-2 md:grid-cols-4">
                   {open[s.id].length === 0 && (
-                    <li className="text-sm text-muted-foreground">No databases / no access.</li>
+                    <li className="text-sm text-muted-foreground">無資料庫 / 無存取權限。</li>
                   )}
                   {open[s.id].map((db) => (
                     <li key={db} className="flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 font-mono text-sm">
@@ -79,7 +79,7 @@ export default function DatabasesPage() {
         ))}
         {servers.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            No database servers found. Deploy a WordPress site or run a DB container.
+            找不到資料庫伺服器。請部署 WordPress 網站或啟動一個資料庫容器。
           </p>
         )}
       </div>

@@ -54,31 +54,31 @@ export default function FilesPage() {
   async function save() {
     if (!editing) return;
     await api.writeFile(editing.path, editing.content);
-    toast.success("Saved");
+    toast.success("已儲存");
     setEditing(null);
     load(path);
   }
 
   async function makeDir() {
-    const name = prompt("New folder name");
+    const name = prompt("新資料夾名稱");
     if (!name) return;
     await api.mkdir(path ? `${path}/${name}` : name);
     load(path);
   }
 
   async function remove(entry: any) {
-    if (!confirm(`Delete ${entry.name}?`)) return;
+    if (!confirm(`確定要刪除 ${entry.name} 嗎？`)) return;
     await api.deletePath(entry.path);
-    toast.success("Deleted");
+    toast.success("已刪除");
     load(path);
   }
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">File Manager</h1>
+        <h1 className="text-2xl font-bold tracking-tight">檔案管理</h1>
         <Button variant="outline" size="sm" onClick={makeDir}>
-          <FolderPlus className="size-4" /> New folder
+          <FolderPlus className="size-4" /> 新資料夾
         </Button>
       </div>
 
@@ -126,7 +126,7 @@ export default function FilesPage() {
             ))}
             {entries.length === 0 && (
               <TableRow>
-                <TableCell className="py-10 text-center text-muted-foreground">Empty folder.</TableCell>
+                <TableCell className="py-10 text-center text-muted-foreground">空的資料夾。</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -139,7 +139,7 @@ export default function FilesPage() {
             <DialogTitle className="flex items-center justify-between gap-4 font-mono text-sm">
               {editing?.path}
               <Button size="sm" onClick={save}>
-                <Save className="size-4" /> Save
+                <Save className="size-4" /> 儲存
               </Button>
             </DialogTitle>
           </DialogHeader>

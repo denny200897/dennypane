@@ -8,12 +8,12 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "dennyPanel",
-  description: "Open-source server control panel",
+  description: "開源伺服器控制面板",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={cn("dark font-sans", geist.variable)}>
+    <html lang="zh-Hant" className={cn("dark font-sans", geist.variable)}>
       <body>
         {children}
         <Toaster richColors position="top-right" />

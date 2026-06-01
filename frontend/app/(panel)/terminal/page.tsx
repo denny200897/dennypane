@@ -14,7 +14,7 @@ function wsBase() {
 
 export default function TerminalPage() {
   const ref = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState("connecting…");
+  const [status, setStatus] = useState("連線中…");
 
   useEffect(() => {
     let term: any;
@@ -42,15 +42,15 @@ export default function TerminalPage() {
       ws.binaryType = "arraybuffer";
 
       ws.onopen = () => {
-        setStatus("connected");
+        setStatus("已連線");
         ws.send(`\x00resize:${term.rows}:${term.cols}`);
       };
       ws.onmessage = (e) => {
         if (typeof e.data === "string") term.write(e.data);
         else term.write(new Uint8Array(e.data));
       };
-      ws.onclose = () => setStatus("disconnected");
-      ws.onerror = () => setStatus("connection error (is the backend on :8000?)");
+      ws.onclose = () => setStatus("已斷線");
+      ws.onerror = () => setStatus("連線錯誤（後端是否在 :8000 執行？）");
 
       term.onData((d: string) => ws.readyState === WebSocket.OPEN && ws.send(d));
 
@@ -73,13 +73,13 @@ export default function TerminalPage() {
     <div className="flex h-full flex-col space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Terminal</h1>
-          <p className="text-sm text-muted-foreground">Interactive shell on the host</p>
+          <h1 className="text-2xl font-bold tracking-tight">終端機</h1>
+          <p className="text-sm text-muted-foreground">主機上的互動式 Shell</p>
         </div>
-        <Badge variant={status === "connected" ? "default" : "secondary"}>
+        <Badge variant={status === "已連線" ? "default" : "secondary"}>
           <span
             className={`mr-1 inline-block size-1.5 rounded-full ${
-              status === "connected" ? "bg-primary-foreground" : "bg-muted-foreground"
+              status === "已連線" ? "bg-primary-foreground" : "bg-muted-foreground"
             }`}
           />
           {status}

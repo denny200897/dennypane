@@ -11,9 +11,9 @@ import { cn } from "@/lib/utils";
 import { Globe, FileCode, Newspaper, ExternalLink, Lock, Trash2, Loader2 } from "lucide-react";
 
 const KINDS = [
-  { id: "static", label: "Static site", desc: "nginx serving HTML/CSS/JS", icon: FileCode },
+  { id: "static", label: "靜態網站", desc: "nginx 提供 HTML/CSS/JS", icon: FileCode },
   { id: "wordpress", label: "WordPress", desc: "WordPress + MariaDB", icon: Globe },
-  { id: "ghost", label: "Ghost blog", desc: "Ghost CMS", icon: Newspaper },
+  { id: "ghost", label: "Ghost 部落格", desc: "Ghost CMS", icon: Newspaper },
 ];
 
 export default function SitesPage() {
@@ -33,7 +33,7 @@ export default function SitesPage() {
     setBusy(true);
     try {
       await api.createSite({ domain, kind, admin_email: email || null });
-      toast.success(`Deploying ${domain}…`);
+      toast.success(`正在部署 ${domain}…`);
       setDomain("");
       setEmail("");
       load();
@@ -45,10 +45,10 @@ export default function SitesPage() {
   }
 
   async function remove(id: number) {
-    if (!confirm("Delete this site and its container(s)?")) return;
+    if (!confirm("確定要刪除此網站及其容器嗎？")) return;
     try {
       await api.deleteSite(id);
-      toast.success("Site deleted");
+      toast.success("網站已刪除");
       load();
     } catch (e: any) {
       toast.error(e.message);
@@ -58,8 +58,8 @@ export default function SitesPage() {
   async function setupProxy(id: number, ssl: boolean) {
     try {
       const res: any = await api.applyProxy(id, { enable_ssl: ssl, email: email || null });
-      if (res.applied) toast.success(ssl ? "Proxy + SSL requested" : "Reverse proxy applied");
-      else toast.info(`Config generated (not applied: ${res.reason})`);
+      if (res.applied) toast.success(ssl ? "已套用反向代理並申請 SSL" : "已套用反向代理");
+      else toast.info(`已產生設定檔（未套用：${res.reason}）`);
       load();
     } catch (e: any) {
       toast.error(e.message);
@@ -69,13 +69,13 @@ export default function SitesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Sites &amp; Apps</h1>
-        <p className="text-sm text-muted-foreground">Deploy a site or app in one click</p>
+        <h1 className="text-2xl font-bold tracking-tight">網站與應用</h1>
+        <p className="text-sm text-muted-foreground">一鍵部署網站或應用程式</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">New deployment</CardTitle>
+          <CardTitle className="text-base">新增部署</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={create} className="space-y-4">
@@ -109,13 +109,13 @@ export default function SitesPage() {
               })}
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Input placeholder="domain (e.g. blog.example.com)" value={domain} onChange={(e) => setDomain(e.target.value)} required />
+              <Input placeholder="網域（例如 blog.example.com）" value={domain} onChange={(e) => setDomain(e.target.value)} required />
               {kind !== "static" && (
-                <Input placeholder="admin email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input placeholder="管理員 email（選填）" value={email} onChange={(e) => setEmail(e.target.value)} />
               )}
               <Button type="submit" disabled={busy} className="sm:w-32">
                 {busy && <Loader2 className="animate-spin" />}
-                {busy ? "Deploying…" : "Deploy"}
+                {busy ? "部署中…" : "部署"}
               </Button>
             </div>
           </form>
@@ -144,7 +144,7 @@ export default function SitesPage() {
               )}
               <div className="flex items-center gap-1 pt-1">
                 <Button variant="outline" size="sm" onClick={() => setupProxy(s.id, false)}>
-                  <Globe className="size-3.5" /> Proxy
+                  <Globe className="size-3.5" /> 代理
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setupProxy(s.id, true)}>
                   <Lock className="size-3.5" /> SSL
@@ -162,7 +162,7 @@ export default function SitesPage() {
           </Card>
         ))}
         {sites.length === 0 && (
-          <p className="text-sm text-muted-foreground">No sites yet. Deploy one above.</p>
+          <p className="text-sm text-muted-foreground">尚無網站，請於上方部署。</p>
         )}
       </div>
     </div>

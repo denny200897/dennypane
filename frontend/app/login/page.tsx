@@ -24,7 +24,7 @@ export default function LoginPage() {
       await api.login(username, password);
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      setError(err.message || "登入失敗");
     } finally {
       setLoading(false);
     }
@@ -40,16 +40,16 @@ export default function LoginPage() {
           <CardTitle className="text-2xl">
             denny<span className="text-primary">Panel</span>
           </CardTitle>
-          <CardDescription>Sign in to manage your server</CardDescription>
+          <CardDescription>登入以管理您的伺服器</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">使用者名稱</Label>
               <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">密碼</Label>
               <Input
                 id="password"
                 type="password"
@@ -60,9 +60,9 @@ export default function LoginPage() {
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={loading} className="w-full">
               {loading && <Loader2 className="animate-spin" />}
-              {loading ? "Signing in…" : "Sign in"}
+              {loading ? "登入中…" : "登入"}
             </Button>
-            <p className="text-center text-xs text-muted-foreground">Default: admin / dennypanel</p>
+            <p className="text-center text-xs text-muted-foreground">預設帳密：admin / dennypanel</p>
           </form>
         </CardContent>
       </Card>

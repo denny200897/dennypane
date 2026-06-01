@@ -41,7 +41,8 @@ export default function ContainersPage() {
     setBusy(id + action);
     try {
       await api.containerAction(id, action);
-      toast.success(`Container ${action}ed`);
+      const verb: Record<string, string> = { start: "已啟動", stop: "已停止", restart: "已重啟", remove: "已移除" };
+      toast.success(`容器${verb[action] ?? "操作完成"}`);
       load();
     } catch (e: any) {
       toast.error(e.message);
@@ -62,19 +63,19 @@ export default function ContainersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Containers</h1>
-        <p className="text-sm text-muted-foreground">{containers.length} containers on this host</p>
+        <h1 className="text-2xl font-bold tracking-tight">容器</h1>
+        <p className="text-sm text-muted-foreground">此主機上共有 {containers.length} 個容器</p>
       </div>
 
       <Card className="overflow-hidden p-0">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Image</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Ports</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>名稱</TableHead>
+              <TableHead>映像檔</TableHead>
+              <TableHead>狀態</TableHead>
+              <TableHead>連接埠</TableHead>
+              <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -100,21 +101,21 @@ export default function ContainersPage() {
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     {c.state === "running" ? (
-                      <Button variant="ghost" size="icon" title="Stop" disabled={!!busy} onClick={() => act(c.id, "stop")}>
+                      <Button variant="ghost" size="icon" title="停止" disabled={!!busy} onClick={() => act(c.id, "stop")}>
                         <Square className="size-4" />
                       </Button>
                     ) : (
-                      <Button variant="ghost" size="icon" title="Start" disabled={!!busy} onClick={() => act(c.id, "start")}>
+                      <Button variant="ghost" size="icon" title="啟動" disabled={!!busy} onClick={() => act(c.id, "start")}>
                         <Play className="size-4" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" title="Restart" disabled={!!busy} onClick={() => act(c.id, "restart")}>
+                    <Button variant="ghost" size="icon" title="重啟" disabled={!!busy} onClick={() => act(c.id, "restart")}>
                       <RotateCw className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" title="Logs" onClick={() => showLogs(c)}>
+                    <Button variant="ghost" size="icon" title="日誌" onClick={() => showLogs(c)}>
                       <ScrollText className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" title="Remove" className="text-destructive hover:text-destructive" disabled={!!busy} onClick={() => act(c.id, "remove")}>
+                    <Button variant="ghost" size="icon" title="移除" className="text-destructive hover:text-destructive" disabled={!!busy} onClick={() => act(c.id, "remove")}>
                       <Trash2 className="size-4" />
                     </Button>
                   </div>
@@ -124,7 +125,7 @@ export default function ContainersPage() {
             {containers.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                  No containers found.
+                  找不到任何容器。
                 </TableCell>
               </TableRow>
             )}
@@ -135,10 +136,10 @@ export default function ContainersPage() {
       <Dialog open={!!logs} onOpenChange={(o) => !o && setLogs(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="font-mono text-sm">Logs · {logs?.name}</DialogTitle>
+            <DialogTitle className="font-mono text-sm">日誌 · {logs?.name}</DialogTitle>
           </DialogHeader>
           <pre className="max-h-[60vh] overflow-auto rounded-lg bg-black/40 p-4 text-xs text-muted-foreground whitespace-pre-wrap">
-            {logs?.text || "(empty)"}
+            {logs?.text || "（空）"}
           </pre>
         </DialogContent>
       </Dialog>

@@ -30,7 +30,7 @@ export default function FtpPage() {
     e.preventDefault();
     try {
       await api.createFtpAccount(form);
-      toast.success("Account created");
+      toast.success("帳號已建立");
       setForm({ username: "", password: "", home_dir: "", protocol: "sftp" });
       load();
     } catch (e: any) {
@@ -39,30 +39,30 @@ export default function FtpPage() {
   }
 
   async function remove(id: number) {
-    if (!confirm("Delete this account?")) return;
+    if (!confirm("確定要刪除此帳號嗎？")) return;
     await api.deleteFtpAccount(id);
-    toast.success("Deleted");
+    toast.success("已刪除");
     load();
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">FTP / SFTP Accounts</h1>
+        <h1 className="text-2xl font-bold tracking-tight">FTP / SFTP 帳號</h1>
         <p className="text-sm text-muted-foreground">
-          On Linux these create confined system users; on other OSes accounts are recorded for testing.
+          在 Linux 上會建立受限的系統使用者；在其他作業系統上僅記錄帳號以供測試。
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">New account</CardTitle>
+          <CardTitle className="text-base">新增帳號</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={create} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <Input placeholder="username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
-            <Input type="password" placeholder="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-            <Input placeholder="/srv/ftp/user" value={form.home_dir} onChange={(e) => setForm({ ...form, home_dir: e.target.value })} required />
+            <Input placeholder="使用者名稱" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
+            <Input type="password" placeholder="密碼" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+            <Input placeholder="家目錄 /srv/ftp/user" value={form.home_dir} onChange={(e) => setForm({ ...form, home_dir: e.target.value })} required />
             <Select value={form.protocol} onValueChange={(v) => setForm({ ...form, protocol: v ?? "sftp" })}>
               <SelectTrigger>
                 <SelectValue />
@@ -72,7 +72,7 @@ export default function FtpPage() {
                 <SelectItem value="ftp">FTP</SelectItem>
               </SelectContent>
             </Select>
-            <Button type="submit">Add account</Button>
+            <Button type="submit">新增帳號</Button>
           </form>
         </CardContent>
       </Card>
@@ -81,10 +81,10 @@ export default function FtpPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Username</TableHead>
-              <TableHead>Protocol</TableHead>
-              <TableHead>Home</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>使用者名稱</TableHead>
+              <TableHead>協定</TableHead>
+              <TableHead>家目錄</TableHead>
+              <TableHead>狀態</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -107,7 +107,7 @@ export default function FtpPage() {
             {accounts.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                  No accounts yet.
+                  尚無帳號。
                 </TableCell>
               </TableRow>
             )}

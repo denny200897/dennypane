@@ -21,15 +21,15 @@ import {
 } from "lucide-react";
 
 const NAV = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/containers", label: "Containers", icon: Box },
-  { href: "/sites", label: "Sites & Apps", icon: Globe },
-  { href: "/files", label: "File Manager", icon: FolderTree },
-  { href: "/databases", label: "Databases", icon: Database },
+  { href: "/", label: "儀表板", icon: LayoutDashboard },
+  { href: "/containers", label: "容器", icon: Box },
+  { href: "/sites", label: "網站與應用", icon: Globe },
+  { href: "/files", label: "檔案管理", icon: FolderTree },
+  { href: "/databases", label: "資料庫", icon: Database },
   { href: "/ftp", label: "FTP / SFTP", icon: FolderUp },
-  { href: "/cron", label: "Cron Jobs", icon: Clock },
-  { href: "/terminal", label: "Terminal", icon: SquareTerminal },
-  { href: "/ssh", label: "SSH Hosts", icon: KeyRound },
+  { href: "/cron", label: "排程任務", icon: Clock },
+  { href: "/terminal", label: "終端機", icon: SquareTerminal },
+  { href: "/ssh", label: "SSH 主機", icon: KeyRound },
 ];
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
@@ -52,7 +52,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground">載入中…</div>
     );
   }
 
@@ -96,9 +96,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{user.username}</div>
-              <div className="text-xs text-muted-foreground">Administrator</div>
+              <div className="text-xs text-muted-foreground">管理員</div>
             </div>
-            <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
+            <Button variant="ghost" size="icon" onClick={logout} title="登出">
               <LogOut className="size-4" />
             </Button>
           </div>

@@ -25,7 +25,7 @@ export default function SshPage() {
     e.preventDefault();
     try {
       await api.createSshHost({ ...form, port: Number(form.port) });
-      toast.success("Host added");
+      toast.success("主機已新增");
       setForm({ name: "", hostname: "", port: 22, username: "", password: "" });
       load();
     } catch (e: any) {
@@ -36,39 +36,39 @@ export default function SshPage() {
   async function run(e: React.FormEvent) {
     e.preventDefault();
     if (selected == null) return;
-    setOutput("running…");
+    setOutput("執行中…");
     try {
       const res = await api.sshExec(selected, command);
-      setOutput(`$ ${command}\n${res.stdout}${res.stderr}\n[exit ${res.exit_code}]`);
+      setOutput(`$ ${command}\n${res.stdout}${res.stderr}\n[結束代碼 ${res.exit_code}]`);
     } catch (e: any) {
-      setOutput("Error: " + e.message);
+      setOutput("錯誤：" + e.message);
     }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">SSH Hosts</h1>
-        <p className="text-sm text-muted-foreground">Store remote hosts and run commands against them</p>
+        <h1 className="text-2xl font-bold tracking-tight">SSH 主機</h1>
+        <p className="text-sm text-muted-foreground">儲存遠端主機並對其執行指令</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Add host</CardTitle>
+          <CardTitle className="text-base">新增主機</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={addHost} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {(["name", "hostname", "username", "password"] as const).map((f) => (
               <Input
                 key={f}
-                placeholder={f}
+                placeholder={{ name: "名稱", hostname: "主機位址", username: "使用者名稱", password: "密碼" }[f]}
                 type={f === "password" ? "password" : "text"}
                 value={(form as any)[f]}
                 onChange={(e) => setForm({ ...form, [f]: e.target.value })}
                 required={f !== "password"}
               />
             ))}
-            <Button type="submit">Add host</Button>
+            <Button type="submit">新增主機</Button>
           </form>
         </CardContent>
       </Card>
@@ -101,9 +101,9 @@ export default function SshPage() {
           <CardContent className="space-y-3 pt-6">
             <form onSubmit={run} className="flex gap-2">
               <span className="self-center font-mono text-primary">$</span>
-              <Input className="font-mono" placeholder="uptime" value={command} onChange={(e) => setCommand(e.target.value)} />
+              <Input className="font-mono" placeholder="例如 uptime" value={command} onChange={(e) => setCommand(e.target.value)} />
               <Button type="submit">
-                <Play className="size-4" /> Run
+                <Play className="size-4" /> 執行
               </Button>
             </form>
             {output && (

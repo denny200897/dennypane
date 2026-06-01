@@ -67,7 +67,7 @@ export default function Dashboard() {
   }, []);
 
   if (err) return <p className="text-destructive">{err}</p>;
-  if (!data) return <p className="text-muted-foreground">Loading metrics…</p>;
+  if (!data) return <p className="text-muted-foreground">正在載入系統資訊…</p>;
 
   const upHours = Math.floor(data.uptime_seconds / 3600);
   const upDays = Math.floor(upHours / 24);
@@ -75,36 +75,36 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight">儀表板</h1>
         <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <Server className="size-3.5" /> {data.hostname}
           </span>
           <span>{data.platform}</span>
           <span className="inline-flex items-center gap-1.5">
-            <Clock className="size-3.5" /> up {upDays > 0 ? `${upDays}d ` : ""}
-            {upHours % 24}h
+            <Clock className="size-3.5" /> 已運行 {upDays > 0 ? `${upDays} 天 ` : ""}
+            {upHours % 24} 小時
           </span>
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard
-          title={`CPU · ${data.cpu.cores} cores`}
+          title={`CPU · ${data.cpu.cores} 核心`}
           icon={Cpu}
           value={`${data.cpu.percent.toFixed(0)}%`}
           percent={data.cpu.percent}
-          sub={`load ${data.cpu.load_avg.join(" / ")}`}
+          sub={`負載 ${data.cpu.load_avg.join(" / ")}`}
         />
         <StatCard
-          title="Memory"
+          title="記憶體"
           icon={MemoryStick}
           value={`${data.memory.percent.toFixed(0)}%`}
           percent={data.memory.percent}
           sub={`${bytes(data.memory.used)} / ${bytes(data.memory.total)}`}
         />
         <StatCard
-          title="Disk /"
+          title="磁碟 /"
           icon={HardDrive}
           value={`${data.disk.percent.toFixed(0)}%`}
           percent={data.disk.percent}
