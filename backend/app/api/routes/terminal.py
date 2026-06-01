@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import fcntl
 import os
+import signal
 import struct
 import termios
 
@@ -84,12 +85,19 @@ async def terminal_ws(ws: WebSocket):
     except WebSocketDisconnect:
         pass
     finally:
+        # Kill the child shell FIRST so any read() blocked on the PTY master
+        # gets EOF and returns — otherwise that thread (and the server) can wedge
+        # in an uninterruptible state. Then cancel the reader, close the fd, reap.
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
         reader.cancel()
         try:
             os.close(fd)
         except OSError:
             pass
         try:
-            os.waitpid(pid, os.WNOHANG)
+            os.waitpid(pid, 0)
         except ChildProcessError:
             pass
