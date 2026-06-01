@@ -1,16 +1,34 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Play, Square, RotateCw, ScrollText, Trash2 } from "lucide-react";
 
 export default function ContainersPage() {
   const [containers, setContainers] = useState<any[]>([]);
-  const [busy, setBusy] = useState<string>("");
+  const [busy, setBusy] = useState("");
   const [logs, setLogs] = useState<{ name: string; text: string } | null>(null);
-  const [err, setErr] = useState("");
 
   const load = useCallback(() => {
-    api.containers().then(setContainers).catch((e) => setErr(e.message));
+    api.containers().then(setContainers).catch((e) => toast.error(e.message));
   }, []);
 
   useEffect(() => {
@@ -23,119 +41,107 @@ export default function ContainersPage() {
     setBusy(id + action);
     try {
       await api.containerAction(id, action);
+      toast.success(`Container ${action}ed`);
       load();
     } catch (e: any) {
-      setErr(e.message);
+      toast.error(e.message);
     } finally {
       setBusy("");
     }
   }
 
   async function showLogs(c: any) {
-    const { logs } = await api.containerLogs(c.id);
-    setLogs({ name: c.name, text: logs });
+    try {
+      const { logs } = await api.containerLogs(c.id);
+      setLogs({ name: c.name, text: logs });
+    } catch (e: any) {
+      toast.error(e.message);
+    }
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Containers</h1>
-      {err && <p className="text-red-400 text-sm">{err}</p>}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Containers</h1>
+        <p className="text-sm text-muted-foreground">{containers.length} containers on this host</p>
+      </div>
 
-      <div className="bg-[#111824] border border-white/10 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="text-white/40 text-left">
-            <tr className="border-b border-white/10">
-              <th className="p-3">Name</th>
-              <th className="p-3">Image</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Ports</th>
-              <th className="p-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+      <Card className="overflow-hidden p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Image</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Ports</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {containers.map((c) => (
-              <tr key={c.id} className="border-b border-white/5">
-                <td className="p-3 font-medium">{c.name}</td>
-                <td className="p-3 text-white/60">{c.image}</td>
-                <td className="p-3">
-                  <span
-                    className={`px-2 py-0.5 rounded text-xs ${
-                      c.state === "running"
-                        ? "bg-emerald-500/15 text-emerald-300"
-                        : "bg-white/10 text-white/50"
-                    }`}
-                  >
+              <TableRow key={c.id}>
+                <TableCell className="font-medium">{c.name}</TableCell>
+                <TableCell className="text-muted-foreground">{c.image}</TableCell>
+                <TableCell>
+                  <Badge variant={c.state === "running" ? "default" : "secondary"}>
+                    <span
+                      className={`mr-1 inline-block size-1.5 rounded-full ${
+                        c.state === "running" ? "bg-primary-foreground" : "bg-muted-foreground"
+                      }`}
+                    />
                     {c.state}
-                  </span>
-                </td>
-                <td className="p-3 text-white/50 text-xs">
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
                   {Object.entries(c.ports || {})
                     .map(([k, v]: any) => (v ? `${v[0]?.HostPort}→${k}` : k))
                     .join(", ")}
-                </td>
-                <td className="p-3 text-right space-x-1 whitespace-nowrap">
-                  {c.state === "running" ? (
-                    <button onClick={() => act(c.id, "stop")} disabled={!!busy} className="btn">
-                      Stop
-                    </button>
-                  ) : (
-                    <button onClick={() => act(c.id, "start")} disabled={!!busy} className="btn">
-                      Start
-                    </button>
-                  )}
-                  <button onClick={() => act(c.id, "restart")} disabled={!!busy} className="btn">
-                    Restart
-                  </button>
-                  <button onClick={() => showLogs(c)} className="btn">
-                    Logs
-                  </button>
-                  <button onClick={() => act(c.id, "remove")} disabled={!!busy} className="btn-danger">
-                    Remove
-                  </button>
-                </td>
-              </tr>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    {c.state === "running" ? (
+                      <Button variant="ghost" size="icon" title="Stop" disabled={!!busy} onClick={() => act(c.id, "stop")}>
+                        <Square className="size-4" />
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="icon" title="Start" disabled={!!busy} onClick={() => act(c.id, "start")}>
+                        <Play className="size-4" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" title="Restart" disabled={!!busy} onClick={() => act(c.id, "restart")}>
+                      <RotateCw className="size-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" title="Logs" onClick={() => showLogs(c)}>
+                      <ScrollText className="size-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" title="Remove" className="text-destructive hover:text-destructive" disabled={!!busy} onClick={() => act(c.id, "remove")}>
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
             ))}
             {containers.length === 0 && (
-              <tr>
-                <td colSpan={5} className="p-6 text-center text-white/40">
+              <TableRow>
+                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
                   No containers found.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
 
-      {logs && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-6" onClick={() => setLogs(null)}>
-          <div className="bg-[#0d131e] border border-white/10 rounded-xl w-full max-w-3xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b border-white/10 flex justify-between">
-              <span className="font-medium">Logs · {logs.name}</span>
-              <button onClick={() => setLogs(null)} className="text-white/50">✕</button>
-            </div>
-            <pre className="p-4 overflow-auto text-xs text-white/70 whitespace-pre-wrap">{logs.text || "(empty)"}</pre>
-          </div>
-        </div>
-      )}
-
-      <style jsx global>{`
-        .btn {
-          padding: 4px 10px;
-          border-radius: 6px;
-          background: rgba(255, 255, 255, 0.08);
-          font-size: 12px;
-        }
-        .btn:hover {
-          background: rgba(255, 255, 255, 0.15);
-        }
-        .btn-danger {
-          padding: 4px 10px;
-          border-radius: 6px;
-          background: rgba(248, 113, 113, 0.15);
-          color: #fca5a5;
-          font-size: 12px;
-        }
-      `}</style>
+      <Dialog open={!!logs} onOpenChange={(o) => !o && setLogs(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-sm">Logs · {logs?.name}</DialogTitle>
+          </DialogHeader>
+          <pre className="max-h-[60vh] overflow-auto rounded-lg bg-black/40 p-4 text-xs text-muted-foreground whitespace-pre-wrap">
+            {logs?.text || "(empty)"}
+          </pre>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

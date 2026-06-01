@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Cpu, MemoryStick, HardDrive, Clock, Server } from "lucide-react";
 
 function bytes(n: number) {
   const u = ["B", "KB", "MB", "GB", "TB"];
@@ -14,20 +16,42 @@ function bytes(n: number) {
 }
 
 function Bar({ percent }: { percent: number }) {
-  const color = percent > 85 ? "bg-red-400" : percent > 60 ? "bg-amber-400" : "bg-emerald-400";
+  const color = percent > 85 ? "bg-destructive" : percent > 60 ? "bg-amber-400" : "bg-primary";
   return (
-    <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-      <div className={`h-full ${color}`} style={{ width: `${percent}%` }} />
+    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+      <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${percent}%` }} />
     </div>
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function StatCard({
+  title,
+  icon: Icon,
+  value,
+  percent,
+  sub,
+}: {
+  title: string;
+  icon: any;
+  value: string;
+  percent: number;
+  sub: string;
+}) {
   return (
-    <div className="bg-[#111824] border border-white/10 rounded-xl p-5">
-      <div className="text-sm text-white/50 mb-3">{title}</div>
-      {children}
-    </div>
+    <Card className="relative overflow-hidden">
+      <div className="pointer-events-none absolute -right-6 -top-6 size-24 rounded-full bg-primary/5 blur-2xl" />
+      <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="size-4" />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="text-3xl font-bold tracking-tight">{value}</div>
+        <Bar percent={percent} />
+        <div className="text-xs text-muted-foreground">{sub}</div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -42,40 +66,50 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
-  if (err) return <p className="text-red-400">{err}</p>;
-  if (!data) return <p className="text-white/40">Loading metrics…</p>;
+  if (err) return <p className="text-destructive">{err}</p>;
+  if (!data) return <p className="text-muted-foreground">Loading metrics…</p>;
 
   const upHours = Math.floor(data.uptime_seconds / 3600);
+  const upDays = Math.floor(upHours / 24);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-white/50 text-sm">
-          {data.hostname} · {data.platform} · up {upHours}h
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <Server className="size-3.5" /> {data.hostname}
+          </span>
+          <span>{data.platform}</span>
+          <span className="inline-flex items-center gap-1.5">
+            <Clock className="size-3.5" /> up {upDays > 0 ? `${upDays}d ` : ""}
+            {upHours % 24}h
+          </span>
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card title={`CPU · ${data.cpu.cores} cores`}>
-          <div className="text-3xl font-bold mb-2">{data.cpu.percent.toFixed(0)}%</div>
-          <Bar percent={data.cpu.percent} />
-          <div className="text-xs text-white/40 mt-2">load {data.cpu.load_avg.join(" / ")}</div>
-        </Card>
-        <Card title="Memory">
-          <div className="text-3xl font-bold mb-2">{data.memory.percent.toFixed(0)}%</div>
-          <Bar percent={data.memory.percent} />
-          <div className="text-xs text-white/40 mt-2">
-            {bytes(data.memory.used)} / {bytes(data.memory.total)}
-          </div>
-        </Card>
-        <Card title="Disk /">
-          <div className="text-3xl font-bold mb-2">{data.disk.percent.toFixed(0)}%</div>
-          <Bar percent={data.disk.percent} />
-          <div className="text-xs text-white/40 mt-2">
-            {bytes(data.disk.used)} / {bytes(data.disk.total)}
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <StatCard
+          title={`CPU · ${data.cpu.cores} cores`}
+          icon={Cpu}
+          value={`${data.cpu.percent.toFixed(0)}%`}
+          percent={data.cpu.percent}
+          sub={`load ${data.cpu.load_avg.join(" / ")}`}
+        />
+        <StatCard
+          title="Memory"
+          icon={MemoryStick}
+          value={`${data.memory.percent.toFixed(0)}%`}
+          percent={data.memory.percent}
+          sub={`${bytes(data.memory.used)} / ${bytes(data.memory.total)}`}
+        />
+        <StatCard
+          title="Disk /"
+          icon={HardDrive}
+          value={`${data.disk.percent.toFixed(0)}%`}
+          percent={data.disk.percent}
+          sub={`${bytes(data.disk.used)} / ${bytes(data.disk.total)}`}
+        />
       </div>
     </div>
   );

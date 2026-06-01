@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { Folder, FileText, FolderPlus, Trash2, Save, ChevronRight } from "lucide-react";
 
 function bytes(n: number) {
   const u = ["B", "KB", "MB", "GB"];
@@ -17,7 +23,6 @@ export default function FilesPage() {
   const [path, setPath] = useState("");
   const [entries, setEntries] = useState<any[]>([]);
   const [editing, setEditing] = useState<{ path: string; content: string } | null>(null);
-  const [err, setErr] = useState("");
 
   const load = useCallback((p: string) => {
     api
@@ -25,9 +30,8 @@ export default function FilesPage() {
       .then((d) => {
         setEntries(d.entries);
         setPath(d.path);
-        setErr("");
       })
-      .catch((e) => setErr(e.message));
+      .catch((e) => toast.error(e.message));
   }, []);
 
   useEffect(() => {
@@ -37,17 +41,20 @@ export default function FilesPage() {
   const crumbs = path ? path.split("/") : [];
 
   async function open(entry: any) {
-    if (entry.is_dir) {
-      load(entry.path);
-    } else {
-      const f = await api.readFile(entry.path);
-      setEditing(f);
+    if (entry.is_dir) load(entry.path);
+    else {
+      try {
+        setEditing(await api.readFile(entry.path));
+      } catch (e: any) {
+        toast.error(e.message);
+      }
     }
   }
 
   async function save() {
     if (!editing) return;
     await api.writeFile(editing.path, editing.content);
+    toast.success("Saved");
     setEditing(null);
     load(path);
   }
@@ -62,80 +69,87 @@ export default function FilesPage() {
   async function remove(entry: any) {
     if (!confirm(`Delete ${entry.name}?`)) return;
     await api.deletePath(entry.path);
+    toast.success("Deleted");
     load(path);
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">File Manager</h1>
-        <button onClick={makeDir} className="px-3 py-1.5 rounded-lg bg-white/10 text-sm hover:bg-white/20">
-          + New folder
-        </button>
+        <h1 className="text-2xl font-bold tracking-tight">File Manager</h1>
+        <Button variant="outline" size="sm" onClick={makeDir}>
+          <FolderPlus className="size-4" /> New folder
+        </Button>
       </div>
 
-      <div className="flex gap-1 text-sm text-white/60">
-        <button onClick={() => load("")} className="hover:text-emerald-400">
+      <div className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+        <button onClick={() => load("")} className="rounded px-1.5 py-0.5 hover:text-foreground">
           root
         </button>
         {crumbs.map((c, i) => (
-          <span key={i}>
-            {" / "}
-            <button onClick={() => load(crumbs.slice(0, i + 1).join("/"))} className="hover:text-emerald-400">
+          <span key={i} className="flex items-center gap-1">
+            <ChevronRight className="size-3.5" />
+            <button
+              onClick={() => load(crumbs.slice(0, i + 1).join("/"))}
+              className="rounded px-1.5 py-0.5 hover:text-foreground"
+            >
               {c}
             </button>
           </span>
         ))}
       </div>
-      {err && <p className="text-red-400 text-sm">{err}</p>}
 
-      <div className="bg-[#111824] border border-white/10 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <tbody>
+      <Card className="overflow-hidden p-0">
+        <Table>
+          <TableBody>
             {entries.map((e) => (
-              <tr key={e.path} className="border-b border-white/5 hover:bg-white/5">
-                <td className="p-3 cursor-pointer" onClick={() => open(e)}>
-                  {e.is_dir ? "📁" : "📄"} {e.name}
-                </td>
-                <td className="p-3 text-white/40 text-right w-24">{e.is_dir ? "" : bytes(e.size)}</td>
-                <td className="p-3 text-right w-20">
-                  <button onClick={() => remove(e)} className="text-red-400 text-xs">
-                    Delete
-                  </button>
-                </td>
-              </tr>
+              <TableRow key={e.path}>
+                <TableCell className="cursor-pointer" onClick={() => open(e)}>
+                  <span className="flex items-center gap-2.5">
+                    {e.is_dir ? (
+                      <Folder className="size-4 text-primary" />
+                    ) : (
+                      <FileText className="size-4 text-muted-foreground" />
+                    )}
+                    {e.name}
+                  </span>
+                </TableCell>
+                <TableCell className="w-24 text-right text-muted-foreground">
+                  {e.is_dir ? "" : bytes(e.size)}
+                </TableCell>
+                <TableCell className="w-12 text-right">
+                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => remove(e)}>
+                    <Trash2 className="size-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
             ))}
             {entries.length === 0 && (
-              <tr>
-                <td className="p-6 text-center text-white/40">Empty folder.</td>
-              </tr>
+              <TableRow>
+                <TableCell className="py-10 text-center text-muted-foreground">Empty folder.</TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
 
-      {editing && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-6" onClick={() => setEditing(null)}>
-          <div className="bg-[#0d131e] border border-white/10 rounded-xl w-full max-w-4xl flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b border-white/10 flex justify-between items-center">
-              <span className="font-mono text-sm">{editing.path}</span>
-              <div className="space-x-2">
-                <button onClick={save} className="px-3 py-1 rounded bg-emerald-500 text-black text-sm font-semibold">
-                  Save
-                </button>
-                <button onClick={() => setEditing(null)} className="text-white/50">
-                  ✕
-                </button>
-              </div>
-            </div>
-            <textarea
-              className="p-4 bg-black/40 font-mono text-xs text-white/80 h-[60vh] outline-none resize-none"
-              value={editing.content}
-              onChange={(e) => setEditing({ ...editing, content: e.target.value })}
-            />
-          </div>
-        </div>
-      )}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between gap-4 font-mono text-sm">
+              {editing?.path}
+              <Button size="sm" onClick={save}>
+                <Save className="size-4" /> Save
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <textarea
+            className="h-[60vh] w-full resize-none rounded-lg bg-black/40 p-4 font-mono text-xs text-foreground outline-none ring-1 ring-border focus:ring-primary"
+            value={editing?.content ?? ""}
+            onChange={(e) => editing && setEditing({ ...editing, content: e.target.value })}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

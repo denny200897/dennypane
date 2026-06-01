@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { Server, Play } from "lucide-react";
 
 export default function SshPage() {
   const [hosts, setHosts] = useState<any[]>([]);
@@ -9,22 +15,21 @@ export default function SshPage() {
   const [selected, setSelected] = useState<number | null>(null);
   const [command, setCommand] = useState("");
   const [output, setOutput] = useState("");
-  const [err, setErr] = useState("");
 
-  const load = () => api.sshHosts().then(setHosts).catch((e) => setErr(e.message));
+  const load = () => api.sshHosts().then(setHosts).catch((e) => toast.error(e.message));
   useEffect(() => {
     load();
   }, []);
 
   async function addHost(e: React.FormEvent) {
     e.preventDefault();
-    setErr("");
     try {
       await api.createSshHost({ ...form, port: Number(form.port) });
+      toast.success("Host added");
       setForm({ name: "", hostname: "", port: 22, username: "", password: "" });
       load();
     } catch (e: any) {
-      setErr(e.message);
+      toast.error(e.message);
     }
   }
 
@@ -42,63 +47,72 @@ export default function SshPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">SSH / Terminal</h1>
-      {err && <p className="text-red-400 text-sm">{err}</p>}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">SSH Hosts</h1>
+        <p className="text-sm text-muted-foreground">Store remote hosts and run commands against them</p>
+      </div>
 
-      <form onSubmit={addHost} className="bg-[#111824] border border-white/10 rounded-xl p-5 grid grid-cols-2 md:grid-cols-5 gap-3">
-        {(["name", "hostname", "username", "password"] as const).map((f) => (
-          <input
-            key={f}
-            className="px-3 py-2 rounded-lg bg-black/30 border border-white/10 outline-none focus:border-emerald-400"
-            placeholder={f}
-            type={f === "password" ? "password" : "text"}
-            value={(form as any)[f]}
-            onChange={(e) => setForm({ ...form, [f]: e.target.value })}
-            required={f !== "password"}
-          />
-        ))}
-        <button className="rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold">
-          Add host
-        </button>
-      </form>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Add host</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={addHost} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {(["name", "hostname", "username", "password"] as const).map((f) => (
+              <Input
+                key={f}
+                placeholder={f}
+                type={f === "password" ? "password" : "text"}
+                value={(form as any)[f]}
+                onChange={(e) => setForm({ ...form, [f]: e.target.value })}
+                required={f !== "password"}
+              />
+            ))}
+            <Button type="submit">Add host</Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {hosts.map((h) => (
           <button
             key={h.id}
             onClick={() => setSelected(h.id)}
-            className={`text-left p-4 rounded-xl border ${
-              selected === h.id ? "border-emerald-400 bg-emerald-500/10" : "border-white/10 bg-[#111824]"
-            }`}
+            className={cn(
+              "flex items-center gap-3 rounded-xl border p-4 text-left transition-colors",
+              selected === h.id ? "border-primary bg-primary/10" : "border-border bg-card hover:bg-accent/50",
+            )}
           >
-            <div className="font-medium">{h.name}</div>
-            <div className="text-xs text-white/40">
-              {h.username}@{h.hostname}:{h.port}
+            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Server className="size-4.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="truncate font-medium">{h.name}</div>
+              <div className="truncate text-xs text-muted-foreground">
+                {h.username}@{h.hostname}:{h.port}
+              </div>
             </div>
           </button>
         ))}
       </div>
 
       {selected != null && (
-        <div className="space-y-3">
-          <form onSubmit={run} className="flex gap-2">
-            <span className="px-3 py-2.5 text-emerald-400 font-mono">$</span>
-            <input
-              className="flex-1 px-3 py-2.5 rounded-lg bg-black/40 border border-white/10 font-mono outline-none focus:border-emerald-400"
-              placeholder="uptime"
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-            />
-            <button className="px-5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold">
-              Run
-            </button>
-          </form>
-          {output && (
-            <pre className="bg-black/50 border border-white/10 rounded-xl p-4 text-xs text-white/80 whitespace-pre-wrap overflow-auto">
-              {output}
-            </pre>
-          )}
-        </div>
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <form onSubmit={run} className="flex gap-2">
+              <span className="self-center font-mono text-primary">$</span>
+              <Input className="font-mono" placeholder="uptime" value={command} onChange={(e) => setCommand(e.target.value)} />
+              <Button type="submit">
+                <Play className="size-4" /> Run
+              </Button>
+            </form>
+            {output && (
+              <pre className="overflow-auto rounded-lg bg-black/40 p-4 text-xs text-muted-foreground whitespace-pre-wrap ring-1 ring-border">
+                {output}
+              </pre>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );

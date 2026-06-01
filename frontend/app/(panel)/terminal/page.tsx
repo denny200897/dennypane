@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getToken } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
 import "@xterm/xterm/css/xterm.css";
 
 // Backend websocket origin. In dev the API runs on :8000; override via env.
@@ -69,12 +70,22 @@ export default function TerminalPage() {
   }, []);
 
   return (
-    <div className="space-y-3 h-full flex flex-col">
+    <div className="flex h-full flex-col space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Terminal</h1>
-        <span className="text-xs text-white/50">{status}</span>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Terminal</h1>
+          <p className="text-sm text-muted-foreground">Interactive shell on the host</p>
+        </div>
+        <Badge variant={status === "connected" ? "default" : "secondary"}>
+          <span
+            className={`mr-1 inline-block size-1.5 rounded-full ${
+              status === "connected" ? "bg-primary-foreground" : "bg-muted-foreground"
+            }`}
+          />
+          {status}
+        </Badge>
       </div>
-      <div ref={ref} className="flex-1 min-h-[60vh] bg-[#0b0f17] border border-white/10 rounded-xl p-2" />
+      <div ref={ref} className="min-h-[62vh] flex-1 rounded-xl border border-border bg-[#0d121c] p-3 shadow-inner" />
     </div>
   );
 }

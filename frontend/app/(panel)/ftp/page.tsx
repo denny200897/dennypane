@@ -1,89 +1,119 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Trash2 } from "lucide-react";
 
 export default function FtpPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [form, setForm] = useState({ username: "", password: "", home_dir: "", protocol: "sftp" });
-  const [err, setErr] = useState("");
 
-  const load = () => api.ftpAccounts().then(setAccounts).catch((e) => setErr(e.message));
+  const load = () => api.ftpAccounts().then(setAccounts).catch((e) => toast.error(e.message));
   useEffect(() => {
     load();
   }, []);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
-    setErr("");
     try {
       await api.createFtpAccount(form);
+      toast.success("Account created");
       setForm({ username: "", password: "", home_dir: "", protocol: "sftp" });
       load();
     } catch (e: any) {
-      setErr(e.message);
+      toast.error(e.message);
     }
   }
 
   async function remove(id: number) {
     if (!confirm("Delete this account?")) return;
     await api.deleteFtpAccount(id);
+    toast.success("Deleted");
     load();
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">FTP / SFTP Accounts</h1>
-      <p className="text-white/40 text-sm">
-        On Linux hosts these create confined system users for file transfer. On other OSes accounts are recorded for testing.
-      </p>
-
-      <form onSubmit={create} className="bg-[#111824] border border-white/10 rounded-xl p-5 grid grid-cols-2 md:grid-cols-5 gap-3">
-        <input className="inp" placeholder="username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
-        <input className="inp" type="password" placeholder="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-        <input className="inp" placeholder="home dir (/srv/ftp/user)" value={form.home_dir} onChange={(e) => setForm({ ...form, home_dir: e.target.value })} required />
-        <select className="inp" value={form.protocol} onChange={(e) => setForm({ ...form, protocol: e.target.value })}>
-          <option value="sftp">SFTP</option>
-          <option value="ftp">FTP</option>
-        </select>
-        <button className="rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold">Add</button>
-      </form>
-      {err && <p className="text-red-400 text-sm">{err}</p>}
-
-      <div className="bg-[#111824] border border-white/10 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="text-white/40 text-left">
-            <tr className="border-b border-white/10">
-              <th className="p-3">Username</th>
-              <th className="p-3">Protocol</th>
-              <th className="p-3">Home</th>
-              <th className="p-3">Status</th>
-              <th className="p-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {accounts.map((a) => (
-              <tr key={a.id} className="border-b border-white/5">
-                <td className="p-3 font-medium">{a.username}</td>
-                <td className="p-3 uppercase text-white/60">{a.protocol}</td>
-                <td className="p-3 text-white/50 font-mono text-xs">{a.home_dir}</td>
-                <td className="p-3 text-white/50 text-xs">{a.status}</td>
-                <td className="p-3 text-right">
-                  <button onClick={() => remove(a.id)} className="text-red-400 text-xs">Delete</button>
-                </td>
-              </tr>
-            ))}
-            {accounts.length === 0 && (
-              <tr><td colSpan={5} className="p-6 text-center text-white/40">No accounts yet.</td></tr>
-            )}
-          </tbody>
-        </table>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">FTP / SFTP Accounts</h1>
+        <p className="text-sm text-muted-foreground">
+          On Linux these create confined system users; on other OSes accounts are recorded for testing.
+        </p>
       </div>
 
-      <style jsx global>{`
-        .inp { padding: 8px 12px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); outline: none; }
-        .inp:focus { border-color: #34d399; }
-      `}</style>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">New account</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={create} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <Input placeholder="username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
+            <Input type="password" placeholder="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+            <Input placeholder="/srv/ftp/user" value={form.home_dir} onChange={(e) => setForm({ ...form, home_dir: e.target.value })} required />
+            <Select value={form.protocol} onValueChange={(v) => setForm({ ...form, protocol: v ?? "sftp" })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sftp">SFTP</SelectItem>
+                <SelectItem value="ftp">FTP</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button type="submit">Add account</Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="overflow-hidden p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Username</TableHead>
+              <TableHead>Protocol</TableHead>
+              <TableHead>Home</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {accounts.map((a) => (
+              <TableRow key={a.id}>
+                <TableCell className="font-medium">{a.username}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary" className="uppercase">{a.protocol}</Badge>
+                </TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{a.home_dir}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{a.status}</TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => remove(a.id)}>
+                    <Trash2 className="size-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {accounts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                  No accounts yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }

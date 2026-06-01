@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Server, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,40 +32,40 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <form
-        onSubmit={submit}
-        className="w-full max-w-sm bg-[#111824] border border-white/10 rounded-2xl p-8 space-y-5"
-      >
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">
-            denny<span className="text-emerald-400">Panel</span>
-          </h1>
-          <p className="text-sm text-white/50 mt-1">Sign in to your server</p>
-        </div>
-        <div className="space-y-3">
-          <input
-            className="w-full px-4 py-2.5 rounded-lg bg-black/30 border border-white/10 outline-none focus:border-emerald-400"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <input
-            type="password"
-            className="w-full px-4 py-2.5 rounded-lg bg-black/30 border border-white/10 outline-none focus:border-emerald-400"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <button
-          disabled={loading}
-          className="w-full py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold disabled:opacity-50"
-        >
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
-        <p className="text-xs text-white/30 text-center">Default: admin / dennypanel</p>
-      </form>
+      <Card className="w-full max-w-sm border-border/60 shadow-2xl shadow-primary/5">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25">
+            <Server className="size-6" />
+          </div>
+          <CardTitle className="text-2xl">
+            denny<span className="text-primary">Panel</span>
+          </CardTitle>
+          <CardDescription>Sign in to manage your server</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={submit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading && <Loader2 className="animate-spin" />}
+              {loading ? "Signing in…" : "Sign in"}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">Default: admin / dennypanel</p>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

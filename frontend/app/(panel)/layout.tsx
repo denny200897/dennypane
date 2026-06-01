@@ -4,17 +4,32 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { api, clearToken, getToken } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  LayoutDashboard,
+  Box,
+  Globe,
+  FolderTree,
+  Database,
+  FolderUp,
+  Clock,
+  SquareTerminal,
+  KeyRound,
+  Server,
+  LogOut,
+} from "lucide-react";
 
 const NAV = [
-  { href: "/", label: "Dashboard", icon: "▣" },
-  { href: "/containers", label: "Containers", icon: "❒" },
-  { href: "/sites", label: "Sites & Apps", icon: "🌐" },
-  { href: "/files", label: "File Manager", icon: "🗂" },
-  { href: "/databases", label: "Databases", icon: "🗄" },
-  { href: "/ftp", label: "FTP / SFTP", icon: "📁" },
-  { href: "/cron", label: "Cron Jobs", icon: "⏱" },
-  { href: "/terminal", label: "Terminal", icon: "▶" },
-  { href: "/ssh", label: "SSH Hosts", icon: "⌘" },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/containers", label: "Containers", icon: Box },
+  { href: "/sites", label: "Sites & Apps", icon: Globe },
+  { href: "/files", label: "File Manager", icon: FolderTree },
+  { href: "/databases", label: "Databases", icon: Database },
+  { href: "/ftp", label: "FTP / SFTP", icon: FolderUp },
+  { href: "/cron", label: "Cron Jobs", icon: Clock },
+  { href: "/terminal", label: "Terminal", icon: SquareTerminal },
+  { href: "/ssh", label: "SSH Hosts", icon: KeyRound },
 ];
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
@@ -36,40 +51,62 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }
 
   if (!user) {
-    return <div className="min-h-screen flex items-center justify-center text-white/40">Loading…</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>
+    );
   }
 
   return (
     <div className="min-h-screen flex">
-      <aside className="w-60 shrink-0 border-r border-white/10 bg-[#0d131e] flex flex-col">
-        <div className="p-5 text-xl font-bold">
-          denny<span className="text-emerald-400">Panel</span>
+      <aside className="w-64 shrink-0 border-r border-sidebar-border bg-sidebar/80 backdrop-blur flex flex-col sticky top-0 h-screen">
+        <div className="flex items-center gap-2.5 px-5 h-16 border-b border-sidebar-border">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/25">
+            <Server className="size-4.5" />
+          </div>
+          <span className="text-lg font-semibold tracking-tight">
+            denny<span className="text-primary">Panel</span>
+          </span>
         </div>
-        <nav className="flex-1 px-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           {NAV.map((item) => {
+            const Icon = item.icon;
             const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm ${
-                  active ? "bg-emerald-500/15 text-emerald-300" : "text-white/60 hover:bg-white/5"
-                }`}
+                className={cn(
+                  "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                  active
+                    ? "bg-sidebar-accent text-foreground font-medium"
+                    : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                )}
               >
-                <span className="w-5 text-center">{item.icon}</span>
+                <Icon className={cn("size-4.5 shrink-0", active && "text-primary")} />
                 {item.label}
+                {active && <span className="ml-auto h-4 w-1 rounded-full bg-primary" />}
               </Link>
             );
           })}
         </nav>
-        <div className="p-4 border-t border-white/10 text-sm">
-          <div className="text-white/50 mb-2">{user.username}</div>
-          <button onClick={logout} className="text-red-400 hover:text-red-300 text-xs">
-            Sign out
-          </button>
+        <div className="border-t border-sidebar-border p-3">
+          <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+            <div className="flex size-8 items-center justify-center rounded-full bg-primary/15 text-primary text-sm font-semibold uppercase">
+              {user.username.slice(0, 1)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium">{user.username}</div>
+              <div className="text-xs text-muted-foreground">Administrator</div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
+              <LogOut className="size-4" />
+            </Button>
+          </div>
         </div>
       </aside>
-      <main className="flex-1 p-8 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto">
+        <div className="mx-auto max-w-6xl p-8">{children}</div>
+      </main>
     </div>
   );
 }
