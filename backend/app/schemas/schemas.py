@@ -1,6 +1,13 @@
+import re
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# Hostname / domain: letters, digits, dots and hyphens only. Blocks whitespace,
+# slashes, quotes and newlines that could inject into nginx configs or HTML.
+_DOMAIN_RE = re.compile(r"^(?=.{1,253}$)([a-zA-Z0-9](-?[a-zA-Z0-9])*)(\.[a-zA-Z0-9](-?[a-zA-Z0-9])*)*$")
+# Unix usernames for FTP/SFTP accounts.
+_UNAME_RE = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
 
 
 # ---- Auth ----
@@ -61,6 +68,21 @@ class SiteCreate(BaseModel):
     upstream_port: int = 0
     admin_email: str | None = None
 
+    @field_validator("domain")
+    @classmethod
+    def _valid_domain(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not _DOMAIN_RE.match(v):
+            raise ValueError("網域格式不正確（僅允許字母、數字、點與連字號）")
+        return v
+
+    @field_validator("kind")
+    @classmethod
+    def _valid_kind(cls, v: str) -> str:
+        if v not in {"static", "wordpress", "ghost", "proxy"}:
+            raise ValueError("不支援的網站類型")
+        return v
+
 
 class SiteOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -114,6 +136,20 @@ class FTPAccountCreate(BaseModel):
     password: str = Field(min_length=4)
     home_dir: str
     protocol: str = "sftp"  # ftp | sftp
+
+    @field_validator("username")
+    @classmethod
+    def _valid_username(cls, v: str) -> str:
+        if not _UNAME_RE.match(v):
+            raise ValueError("使用者名稱不合法（小寫字母開頭，僅限字母、數字、_、-）")
+        return v
+
+    @field_validator("protocol")
+    @classmethod
+    def _valid_protocol(cls, v: str) -> str:
+        if v not in {"ftp", "sftp"}:
+            raise ValueError("協定僅支援 ftp 或 sftp")
+        return v
 
 
 class FTPAccountOut(BaseModel):

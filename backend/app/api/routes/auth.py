@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Form, HTTPException, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core import ratelimit
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import get_db
 from app.models.models import User
@@ -23,21 +24,40 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 OTP_REQUIRED = "OTP_REQUIRED"
 
 
+def _client_ip(request: Request) -> str:
+    # Trust the reverse proxy's forwarded client IP if present.
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @router.post("/login", response_model=Token)
 def login(
+    request: Request,
     form: OAuth2PasswordRequestForm = Depends(),
     otp: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    ip = _client_ip(request)
+    blocked = ratelimit.is_blocked(ip)
+    if blocked:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            f"登入嘗試過於頻繁，請於 {blocked} 秒後再試",
+        )
     user = db.scalar(select(User).where(User.username == form.username))
     if not user or not verify_password(form.password, user.password_hash):
+        ratelimit.record_failure(ip)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "帳號或密碼錯誤")
     if user.totp_enabled:
         if not otp:
             # Signals the client to prompt for a 2FA code and resubmit.
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, OTP_REQUIRED)
         if not totp_service.verify(user.totp_secret, otp):
+            ratelimit.record_failure(ip)
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "兩步驟驗證碼錯誤")
+    ratelimit.reset(ip)
     return Token(access_token=create_access_token(user.username))
 
 

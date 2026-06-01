@@ -5,6 +5,7 @@ on a host port; a reverse proxy / domain mapping can be layered on top later.
 """
 from __future__ import annotations
 
+import html
 import json
 import secrets
 import socket
@@ -34,9 +35,10 @@ def deploy_static(site: Site) -> Site:
     root.mkdir(parents=True, exist_ok=True)
     index = root / "index.html"
     if not index.exists():
+        safe_domain = html.escape(site.domain)
         index.write_text(
-            f"<!doctype html><html><head><title>{site.domain}</title></head>"
-            f"<body style='font-family:sans-serif'><h1>{site.domain}</h1>"
+            f"<!doctype html><html><head><title>{safe_domain}</title></head>"
+            f"<body style='font-family:sans-serif'><h1>{safe_domain}</h1>"
             "<p>Served by dennyPanel.</p></body></html>"
         )
     port = _free_port()

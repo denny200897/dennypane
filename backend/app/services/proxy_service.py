@@ -8,11 +8,14 @@ functions degrade gracefully and report what *would* happen so the UI still work
 """
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
 
 from app.models.models import Site
+
+_DOMAIN_RE = re.compile(r"^[a-zA-Z0-9.-]{1,253}$")
 
 NGINX_SITES_DIR = Path("/etc/nginx/conf.d")
 
@@ -43,6 +46,9 @@ def _conf_path(domain: str) -> Path:
 def write_vhost(site: Site, enable_ssl: bool = False) -> dict:
     if site.upstream_port <= 0:
         raise ValueError("site has no upstream port to proxy to")
+    # Defense in depth: never write an unvalidated domain into an nginx config.
+    if not _DOMAIN_RE.match(site.domain):
+        raise ValueError("invalid domain")
     acme = (
         "    location /.well-known/acme-challenge/ { root /var/www/certbot; }\n"
         if enable_ssl

@@ -54,13 +54,47 @@ def init_db() -> None:
             db.commit()
 
 
+def _check_secret() -> None:
+    from app.core.config import DEFAULT_INSECURE_SECRET
+
+    if settings.secret_key == DEFAULT_INSECURE_SECRET and not settings.allow_insecure_secret:
+        raise RuntimeError(
+            "Refusing to start with the default DENNY_SECRET_KEY. "
+            "Set a strong secret (openssl rand -hex 32), or set "
+            "DENNY_ALLOW_INSECURE_SECRET=true for local dev only."
+        )
+    if len(settings.secret_key) < 32 and not settings.allow_insecure_secret:
+        raise RuntimeError("DENNY_SECRET_KEY is too short; use at least 32 characters.")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _check_secret()
     init_db()
     yield
 
 
-app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title=settings.app_name,
+    version="0.1.0",
+    lifespan=lifespan,
+    # Interactive docs / OpenAPI off by default to reduce attack surface.
+    docs_url="/docs" if settings.enable_docs else None,
+    redoc_url="/redoc" if settings.enable_docs else None,
+    openapi_url="/openapi.json" if settings.enable_docs else None,
+)
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    return response
+
 
 app.add_middleware(
     CORSMiddleware,

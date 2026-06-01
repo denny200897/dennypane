@@ -95,11 +95,34 @@ Backend settings use the `DENNY_` env prefix (see `backend/app/core/config.py`):
 - [ ] Database manager (MySQL / Postgres)
 - [ ] Multi-user roles & audit log
 
-## Security notes
+## Security
 
-This is an early scaffold. Before exposing it to the internet: set a strong
-`DENNY_SECRET_KEY`, change the admin password, serve over HTTPS, encrypt stored
-SSH credentials at rest, and restrict who can reach the panel.
+Hardening built in for internet-facing deployments:
+
+- **Auth tokens** — JWT signed HS256 with the algorithm pinned on decode (no
+  `alg:none`/RS256 confusion); `exp`/`iat`/`nbf`/`iss` enforced. The server
+  **refuses to start** with the default or a <32-char `DENNY_SECRET_KEY`
+  (override with `DENNY_ALLOW_INSECURE_SECRET=true` for local dev only).
+- **Brute-force protection** — per-IP failed-login throttle
+  (`DENNY_LOGIN_MAX_ATTEMPTS` / `DENNY_LOGIN_WINDOW_SECONDS`).
+- **2FA** — optional TOTP two-factor auth.
+- **SQL injection** — all queries go through SQLAlchemy ORM (parameterized);
+  no string-built SQL from user input.
+- **XSS** — React auto-escapes all rendered values; no `dangerouslySetInnerHTML`;
+  generated site HTML is `html.escape`d.
+- **Injection via domains** — domain/username inputs are strictly validated
+  (regex) before being written into nginx configs or system commands.
+- **Uploads** — filenames reduced to a safe basename, path traversal blocked,
+  size-capped (`DENNY_MAX_UPLOAD_MB`).
+- **Headers** — `X-Content-Type-Options`, `X-Frame-Options: DENY`,
+  `Referrer-Policy`, `Permissions-Policy` from both the API and nginx;
+  `server_tokens off`.
+- **Reduced surface** — interactive API docs are **off** by default
+  (`DENNY_ENABLE_DOCS=true` to re-enable).
+
+Still recommended: serve over **HTTPS**, change the admin password on first
+login, and restrict network access to the panel. SSH/FTP credentials are stored
+in SQLite — encrypt them at rest (or use key auth) for high-security setups.
 
 ## License
 

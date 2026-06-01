@@ -11,7 +11,7 @@ import { Server, Loader2, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("admin");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [needOtp, setNeedOtp] = useState(false);
@@ -92,9 +92,6 @@ export default function LoginPage() {
               {loading && <Loader2 className="animate-spin" />}
               {loading ? "登入中…" : needOtp ? "驗證並登入" : "登入"}
             </Button>
-            {!needOtp && (
-              <p className="text-center text-xs text-muted-foreground">預設帳密：admin / dennypanel</p>
-            )}
           </form>
         </CardContent>
       </Card>

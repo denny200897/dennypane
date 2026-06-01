@@ -7,6 +7,8 @@ cleanup() { kill 0 2>/dev/null; }
 trap cleanup EXIT INT TERM
 
 echo "▶ starting backend on :8000"
+# Dev only: permit the insecure default secret. NEVER set this in production.
+export DENNY_ALLOW_INSECURE_SECRET=true
 (cd "$ROOT/backend" && source .venv/bin/activate && uvicorn app.main:app --reload --port 8000) &
 
 echo "▶ starting frontend on :3000"

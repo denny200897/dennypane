@@ -82,10 +82,29 @@ def delete(rel: str) -> dict:
     return {"deleted": rel}
 
 
+def _safe_name(name: str | None) -> str:
+    # Strip any directory components and null bytes; reject traversal entirely.
+    base = Path(name or "upload.bin").name.replace("\x00", "").strip()
+    if not base or base in (".", ".."):
+        base = "upload.bin"
+    return base
+
+
 async def upload(rel_dir: str, file: UploadFile) -> dict:
+    from app.core.config import settings
+
     target_dir = _resolve(rel_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
-    dest = _resolve(str(Path(rel_dir) / (file.filename or "upload.bin")))
+    dest = _resolve(str(Path(rel_dir) / _safe_name(file.filename)))
+
+    max_bytes = settings.max_upload_mb * 1024 * 1024
+    written = 0
     with dest.open("wb") as fh:
-        shutil.copyfileobj(file.file, fh)
+        while chunk := await file.read(1024 * 1024):
+            written += len(chunk)
+            if written > max_bytes:
+                fh.close()
+                dest.unlink(missing_ok=True)
+                raise PathError(f"檔案超過上限 {settings.max_upload_mb} MB")
+            fh.write(chunk)
     return {"path": str(dest.relative_to(ROOT.resolve())), "size": dest.stat().st_size}
