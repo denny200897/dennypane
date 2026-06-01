@@ -1,9 +1,15 @@
-# dennyPanel — production stack: backend (FastAPI) + frontend (Next.js) + nginx
+# dennyPanel — production stack: backend (FastAPI) + frontend (Next.js) + proxy
 #
 #   cp .env.example .env   # then edit secrets
-#   docker compose up -d --build
 #
-# Open http://<server-ip>/  (or put a TLS terminator / your domain in front).
+# Plain HTTP (nginx):
+#   docker compose --profile http up -d --build
+#   -> open http://<server-ip>/
+#
+# Automatic HTTPS (Caddy + Let's Encrypt; needs DENNY_DOMAIN pointing here and
+# ports 80+443 open):
+#   docker compose --profile https up -d --build
+#   -> open https://<your-domain>/
 
 services:
   backend:
@@ -32,8 +38,10 @@ services:
       - backend
     restart: unless-stopped
 
+  # Plain HTTP reverse proxy. Enable with:  --profile http
   nginx:
     image: nginx:alpine
+    profiles: ["http"]
     ports:
       - "${DENNY_HTTP_PORT:-80}:80"
     volumes:
@@ -43,6 +51,29 @@ services:
       - backend
     restart: unless-stopped
 
+  # Automatic HTTPS (Let's Encrypt). Enable with:  --profile https
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Required for HTTPS — set in .env (e.g. panel.example.com). Soft default
+      # so the --profile http path doesn't need it.
+      DENNY_DOMAIN: ${DENNY_DOMAIN:-}
+      DENNY_ACME_EMAIL: ${DENNY_ACME_EMAIL:-}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
 volumes:
   denny_data:
   denny_sites:
+  caddy_data:
+  caddy_config:

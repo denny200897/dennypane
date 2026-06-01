@@ -1,0 +1,32 @@
+# dennyPanel — automatic HTTPS via Caddy (Let's Encrypt).
+# DENNY_DOMAIN / DENNY_ACME_EMAIL are injected from the environment.
+{
+	email {$DENNY_ACME_EMAIL}
+}
+
+{$DENNY_DOMAIN} {
+	encode gzip
+
+	# API + terminal WebSocket -> backend (Caddy proxies WS automatically)
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else -> Next.js frontend
+	handle {
+		reverse_proxy frontend:3000
+	}
+
+	# Security headers (Caddy already sets HSTS on HTTPS sites)
+	header {
+		-Server
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+	}
+
+	request_body {
+		max_size 110MB
+	}
+}

@@ -41,12 +41,22 @@ git clone https://github.com/denny200897/dennypane.git dennypanel
 cd dennypanel
 cp .env.example .env
 # edit .env — set DENNY_SECRET_KEY (openssl rand -hex 32) and the admin password
-docker compose up -d --build
 ```
 
-Then open `http://<server-ip>/` and log in. For HTTPS, point your own domain at
-the server and put a TLS terminator (Caddy, Cloudflare, or nginx + certbot) in
-front of port 80, or extend `deploy/nginx.conf`.
+**Plain HTTP** (nginx on port 80):
+```bash
+docker compose --profile http up -d --build
+# open http://<server-ip>/
+```
+
+**Automatic HTTPS** (Caddy + Let's Encrypt — recommended for the internet).
+Point your domain's A/AAAA record at the server, open ports 80 + 443, and set
+`DENNY_DOMAIN` (and optionally `DENNY_ACME_EMAIL`) in `.env`:
+```bash
+docker compose --profile https up -d --build
+# open https://<your-domain>/   (cert is issued automatically on first request)
+```
+Caddy obtains and renews the TLS certificate for you and redirects HTTP→HTTPS.
 
 **Notes**
 - The backend mounts `/var/run/docker.sock` so it can manage the host's Docker.
