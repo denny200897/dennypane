@@ -58,6 +58,7 @@ export const api = {
   },
   me: () => request<{ id: number; username: string; is_admin: boolean }>("/auth/me"),
   systemOverview: () => request<any>("/system/overview"),
+  processes: (limit = 8) => request<any[]>(`/system/processes?limit=${limit}`),
   containers: () => request<any[]>("/docker/containers?all=true"),
   containerAction: (id: string, action: string) =>
     request(`/docker/containers/${id}/action`, {
@@ -65,6 +66,21 @@ export const api = {
       body: JSON.stringify({ action }),
     }),
   containerLogs: (id: string) => request<{ logs: string }>(`/docker/containers/${id}/logs`),
+  dockerSummary: () =>
+    request<{
+      containers_total: number;
+      containers_running: number;
+      containers_stopped: number;
+      images: number;
+    }>("/docker/summary"),
+  runContainer: (payload: {
+    image: string;
+    name?: string | null;
+    ports?: Record<string, number>;
+    env?: Record<string, string>;
+    volumes?: Record<string, string>;
+    restart?: string;
+  }) => request("/docker/containers", { method: "POST", body: JSON.stringify(payload) }),
   images: () => request<any[]>("/docker/images"),
   sites: () => request<any[]>("/sites"),
   createSite: (payload: any) =>

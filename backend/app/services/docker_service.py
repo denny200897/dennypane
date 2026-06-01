@@ -105,6 +105,18 @@ def pull_image(reference: str) -> dict:
     return {"id": img.short_id, "tags": img.tags}
 
 
+def summary() -> dict:
+    c = client()
+    containers = c.containers.list(all=True)
+    running = sum(1 for x in containers if x.status == "running")
+    return {
+        "containers_total": len(containers),
+        "containers_running": running,
+        "containers_stopped": len(containers) - running,
+        "images": len(c.images.list()),
+    }
+
+
 def get_container(container_id: str):
     try:
         return client().containers.get(container_id)

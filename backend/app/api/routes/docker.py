@@ -15,6 +15,12 @@ def _guard():
         raise HTTPException(503, f"Docker unavailable: {exc}")
 
 
+@router.get("/summary")
+def summary(_: User = Depends(get_current_user)):
+    _guard()
+    return ds.summary()
+
+
 @router.get("/containers")
 def containers(all: bool = True, _: User = Depends(get_current_user)):
     _guard()
