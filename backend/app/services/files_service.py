@@ -59,6 +59,9 @@ def read_file(rel: str, max_bytes: int = 1_000_000) -> str:
 
 
 def write_file(rel: str, content: str) -> dict:
+    max_bytes = settings.max_upload_mb * 1024 * 1024
+    if len(content.encode("utf-8")) > max_bytes:
+        raise PathError(f"內容超過上限 {settings.max_upload_mb} MB")
     target = _resolve(rel)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content)

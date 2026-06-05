@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core import audit, crypto
 from app.db.session import get_db
 from app.models.models import SSHHost, User
 from app.schemas.schemas import SSHCommand, SSHHostCreate, SSHHostOut
@@ -18,7 +19,11 @@ def list_hosts(db: Session = Depends(get_db), _: User = Depends(get_current_user
 
 @router.post("/hosts", response_model=SSHHostOut)
 def create_host(body: SSHHostCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    host = SSHHost(**body.model_dump())
+    data = body.model_dump()
+    # Encrypt secrets at rest; they are never returned by SSHHostOut.
+    data["password"] = crypto.encrypt(data.get("password", ""))
+    data["private_key"] = crypto.encrypt(data.get("private_key", ""))
+    host = SSHHost(**data)
     db.add(host)
     db.commit()
     db.refresh(host)
@@ -40,7 +45,7 @@ def test_host(host_id: int, db: Session = Depends(get_db), _: User = Depends(get
     host = db.get(SSHHost, host_id)
     if not host:
         raise HTTPException(404, "Host not found")
-    return ssh_service.test_connection(host)
+    return ssh_service.test_connection(host, db=db)
 
 
 @router.post("/hosts/{host_id}/exec")
@@ -48,12 +53,13 @@ def exec_command(
     host_id: int,
     body: SSHCommand,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
     host = db.get(SSHHost, host_id)
     if not host:
         raise HTTPException(404, "Host not found")
+    audit.log("ssh.exec", subject=user.username, host=host.hostname)
     try:
-        return ssh_service.run_command(host, body.command)
+        return ssh_service.run_command(host, body.command, db=db)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"SSH error: {exc}")

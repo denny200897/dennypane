@@ -1,14 +1,48 @@
 """Thin wrapper around the Docker SDK used by the API routes."""
 from __future__ import annotations
 
+import os
+
 import docker
 from docker.errors import DockerException, NotFound
 
 _client: docker.DockerClient | None = None
 
+# Host paths that must never be bind-mounted into a container: doing so would
+# let an authenticated user escalate to full host control (e.g. mounting the
+# Docker socket, or / and chrooting). Anything at or under these is rejected.
+_FORBIDDEN_MOUNT_PREFIXES = (
+    "/", "/etc", "/root", "/boot", "/dev", "/proc", "/sys",
+    "/var/run", "/run", "/var/lib/docker", "/home",
+)
+
 
 class DockerUnavailable(RuntimeError):
     pass
+
+
+class UnsafeMount(ValueError):
+    pass
+
+
+def _check_host_path(host_path: str) -> None:
+    # Check both the literal normalized path and the symlink-resolved path, so a
+    # symlink (or platform quirk like /etc -> /private/etc) can't slip a
+    # sensitive directory past the denylist.
+    candidates = {
+        os.path.normpath(os.path.abspath(host_path)),
+        os.path.realpath(host_path),
+    }
+    for path in candidates:
+        if path == "/":
+            raise UnsafeMount("refusing to mount filesystem root")
+        for prefix in _FORBIDDEN_MOUNT_PREFIXES:
+            if prefix == "/":
+                continue
+            if path == prefix or path.startswith(prefix + os.sep):
+                raise UnsafeMount(
+                    f"refusing to mount sensitive host path: {host_path}"
+                )
 
 
 def client() -> docker.DockerClient:
@@ -65,6 +99,26 @@ def container_logs(container_id: str, tail: int = 200) -> str:
     return c.logs(tail=tail).decode("utf-8", errors="replace")
 
 
+def ensure_network(name: str):
+    """Return (creating if needed) a user-defined bridge network.
+
+    Containers on the default `bridge` network can't resolve each other by name;
+    only a user-defined network gives them DNS, which is what app stacks (e.g.
+    WordPress -> its MariaDB) rely on."""
+    cli = client()
+    try:
+        return cli.networks.get(name)
+    except NotFound:
+        return cli.networks.create(name, driver="bridge")
+
+
+def remove_network(name: str) -> None:
+    try:
+        client().networks.get(name).remove()
+    except (NotFound, DockerException):
+        pass
+
+
 def run_container(
     image: str,
     name: str | None = None,
@@ -72,8 +126,16 @@ def run_container(
     env: dict | None = None,
     volumes: dict | None = None,
     restart: str = "unless-stopped",
+    network: str | None = None,
 ) -> dict:
-    vol = {host: {"bind": cont, "mode": "rw"} for host, cont in (volumes or {}).items()}
+    # A volume source starting with "/" is a host bind mount (denylist-checked);
+    # anything else is treated as a Docker named volume, which Docker auto-creates
+    # and which avoids host-permission headaches for stateful images like MariaDB.
+    vol: dict = {}
+    for src, cont in (volumes or {}).items():
+        if src.startswith("/"):
+            _check_host_path(src)
+        vol[src] = {"bind": cont, "mode": "rw"}
     c = client().containers.run(
         image,
         name=name,
@@ -82,6 +144,7 @@ def run_container(
         environment=env or {},
         volumes=vol,
         restart_policy={"Name": restart} if restart else None,
+        network=network,
     )
     c.reload()
     return _container_dict(c)

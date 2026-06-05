@@ -17,7 +17,7 @@ services:
     environment:
       DENNY_SECRET_KEY: ${DENNY_SECRET_KEY:?set DENNY_SECRET_KEY in .env}
       DENNY_ADMIN_USERNAME: ${DENNY_ADMIN_USERNAME:-admin}
-      DENNY_ADMIN_PASSWORD: ${DENNY_ADMIN_PASSWORD:-dennypanel}
+      DENNY_ADMIN_PASSWORD: ${DENNY_ADMIN_PASSWORD:?set DENNY_ADMIN_PASSWORD in .env}
       DENNY_DATABASE_URL: sqlite:////data/dennypanel.db
       DENNY_SITES_ROOT: /opt/dennypanel/sites
     volumes:
@@ -39,6 +39,10 @@ services:
     restart: unless-stopped
 
   # Plain HTTP reverse proxy. Enable with:  --profile http
+  # WARNING: this serves the panel over unencrypted HTTP — the login bearer
+  # token travels in cleartext and can be sniffed. Use ONLY on a trusted private
+  # network (e.g. behind a VPN). For any internet-facing deployment use the
+  # `https` profile (Caddy + Let's Encrypt) instead.
   nginx:
     image: nginx:alpine
     profiles: ["http"]

@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core import audit, crypto
 from app.db.session import get_db
 from app.models.models import FTPAccount, User
 from app.schemas.schemas import FTPAccountCreate, FTPAccountOut
@@ -17,14 +18,17 @@ def list_accounts(db: Session = Depends(get_db), _: User = Depends(get_current_u
 
 
 @router.post("/accounts", response_model=FTPAccountOut)
-def create_account(body: FTPAccountCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def create_account(body: FTPAccountCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if db.scalar(select(FTPAccount).where(FTPAccount.username == body.username)):
         raise HTTPException(409, "Username already exists")
     account = FTPAccount(**body.model_dump())
+    # Provision with the plaintext password, then store it encrypted at rest.
     ftp_service.provision(account)
+    account.password = crypto.encrypt(account.password)
     db.add(account)
     db.commit()
     db.refresh(account)
+    audit.log("ftp.create", subject=user.username, account=account.username)
     return account
 
 

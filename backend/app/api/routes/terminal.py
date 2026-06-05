@@ -15,9 +15,28 @@ import termios
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from urllib.parse import urlsplit
+
+from app.core import audit
+from app.core.config import settings
 from app.core.security import decode_access_token
 
 router = APIRouter(tags=["terminal"])
+
+
+def _origin_allowed(ws: WebSocket) -> bool:
+    """Reject cross-site WebSocket connections (CSWSH defense in depth).
+
+    Allowed when: no Origin header (non-browser client), the Origin is same-host
+    as the request (behind the bundled proxy), or it's in the CORS allowlist
+    (covers the dev setup where the UI on :3000 talks to the API on :8000)."""
+    origin = ws.headers.get("origin")
+    if not origin:
+        return True
+    if origin in settings.cors_origins:
+        return True
+    host = ws.headers.get("host", "")
+    return urlsplit(origin).netloc == host
 
 try:
     import pty  # noqa: F401
@@ -31,38 +50,108 @@ def _set_winsize(fd: int, rows: int, cols: int) -> None:
     fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
 
 
+def _ip_blocked(ws: WebSocket) -> bool:
+    """True if the connecting IP has been flagged as suspicious. Blocking an IP
+    therefore severs its terminal access too, not just the HTTP API."""
+    from sqlalchemy import select
+
+    from app.db.session import SessionLocal
+    from app.models.models import BlockedIP
+
+    n = settings.trusted_proxies
+    ip = None
+    if n > 0:
+        fwd = ws.headers.get("x-forwarded-for")
+        if fwd:
+            parts = [p.strip() for p in fwd.split(",") if p.strip()]
+            if parts:
+                ip = parts[-min(n, len(parts))]
+    if ip is None:
+        ip = ws.client.host if ws.client else "unknown"
+    with SessionLocal() as db:
+        return db.scalar(select(BlockedIP).where(BlockedIP.ip == ip)) is not None
+
+
+def _resolve_shell() -> str:
+    """Pick a shell that actually exists on the host.
+
+    The previous code blindly used $SHELL or /bin/bash; on a slim image (the API
+    often runs in a minimal container) bash isn't installed, so exec failed and
+    the terminal showed nothing. Fall back through sensible candidates."""
+    import shutil
+
+    candidates = [os.environ.get("SHELL"), "/bin/bash", "/bin/sh", "/usr/bin/sh"]
+    for cand in candidates:
+        if cand and (os.path.isfile(cand) or shutil.which(cand)):
+            return cand
+    return "/bin/sh"
+
+
+AUTH_PREFIX = "\x00auth:"
+
+
 @router.websocket("/terminal/ws")
 async def terminal_ws(ws: WebSocket):
-    token = ws.query_params.get("token", "")
-    if not decode_access_token(token):
+    if not _origin_allowed(ws):
+        await ws.close(code=4403)
+        return
+    await ws.accept()
+    # The token arrives as the first message rather than a query parameter, so
+    # it can't leak into reverse-proxy access logs or browser history.
+    try:
+        first = await asyncio.wait_for(ws.receive(), timeout=10)
+    except (asyncio.TimeoutError, WebSocketDisconnect):
         await ws.close(code=4401)
         return
+    auth_text = first.get("text") or ""
+    token = auth_text[len(AUTH_PREFIX):] if auth_text.startswith(AUTH_PREFIX) else ""
+    payload = decode_access_token(token)
+    if not payload:
+        await ws.close(code=4401)
+        return
+    if _ip_blocked(ws):
+        await ws.close(code=4403)
+        return
+    audit.log("terminal.connect", subject=payload.get("sub"))
     if not PTY_AVAILABLE:
-        await ws.accept()
         await ws.send_text("Terminal not supported on this host OS.\r\n")
         await ws.close()
         return
 
     import pty
-
-    await ws.accept()
-    shell = os.environ.get("SHELL", "/bin/bash")
+    shell = _resolve_shell()
     pid, fd = pty.fork()
     if pid == 0:  # child
-        os.execvp(shell, [shell])
-        return
+        # A real terminal needs TERM set or curses apps (vim, top, less) break.
+        os.environ.setdefault("TERM", "xterm-256color")
+        try:
+            # "-" arg name makes it a login shell so the user's profile loads.
+            os.execvp(shell, [shell])
+        except OSError:
+            # exec failed (shell missing): tell the parent, then exit hard so we
+            # don't run the parent's event-loop code in the forked child.
+            os.write(2, f"failed to start shell: {shell}\r\n".encode())
+            os._exit(127)
+        os._exit(0)
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     async def pty_to_ws():
         try:
             while True:
-                data = await loop.run_in_executor(None, os.read, fd, 1024)
+                data = await loop.run_in_executor(None, os.read, fd, 4096)
                 if not data:
                     break
                 await ws.send_bytes(data)
         except (OSError, WebSocketDisconnect):
             pass
+        finally:
+            # Shell exited (EOF) — close the socket so the client shows "已斷線"
+            # instead of hanging on a dead session.
+            try:
+                await ws.close()
+            except RuntimeError:
+                pass
 
     reader = asyncio.create_task(pty_to_ws())
     try:
@@ -76,7 +165,7 @@ async def terminal_ws(ws: WebSocket):
                 try:
                     _, rows, cols = text.split(":")
                     _set_winsize(fd, int(rows), int(cols))
-                except ValueError:
+                except (ValueError, OSError):
                     pass
             elif text is not None:
                 os.write(fd, text.encode())

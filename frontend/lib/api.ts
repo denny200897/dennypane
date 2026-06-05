@@ -78,6 +78,26 @@ export const api = {
     setToken(data.access_token);
     return data;
   },
+  loginHistory: (limit = 100) =>
+    request<
+      {
+        id: number;
+        username: string;
+        ip: string;
+        user_agent: string;
+        success: boolean;
+        reason: string;
+        created_at: string;
+      }[]
+    >(`/auth/login-history?limit=${limit}`),
+  blockedIps: () =>
+    request<{ id: number; ip: string; reason: string; created_at: string }[]>("/auth/blocked-ips"),
+  blockIp: (ip: string, reason = "") =>
+    request<{ id: number; ip: string; reason: string; created_at: string }>("/auth/blocked-ips", {
+      method: "POST",
+      body: JSON.stringify({ ip, reason }),
+    }),
+  unblockIp: (id: number) => request(`/auth/blocked-ips/${id}`, { method: "DELETE" }),
   setup2fa: () => request<{ secret: string; otpauth_uri: string }>("/auth/2fa/setup", { method: "POST" }),
   enable2fa: (code: string) =>
     request("/auth/2fa/enable", { method: "POST", body: JSON.stringify({ code }) }),

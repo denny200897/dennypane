@@ -56,8 +56,17 @@ def deploy_static(site: Site) -> Site:
 
 
 def deploy_wordpress(site: Site, admin_email: str | None = None) -> Site:
-    db_name = _slug(site.domain) + "-db"
+    slug = _slug(site.domain)
+    db_name = slug + "-db"
+    db_vol = slug + "-db-data"
+    network = slug + "-net"
     db_pass = secrets.token_urlsafe(16)
+
+    # A user-defined network so WordPress can reach MariaDB by container name.
+    # Without this the WORDPRESS_DB_HOST lookup fails on the default bridge and
+    # the install screen just spins on "Error establishing a database connection".
+    ds.ensure_network(network)
+
     ds.run_container(
         image="mariadb:11",
         name=db_name,
@@ -67,13 +76,16 @@ def deploy_wordpress(site: Site, admin_email: str | None = None) -> Site:
             "MARIADB_PASSWORD": db_pass,
             "MARIADB_ROOT_PASSWORD": secrets.token_urlsafe(16),
         },
+        # Named volume keeps the database across restarts/redeploys.
+        volumes={db_vol: "/var/lib/mysql"},
+        network=network,
     )
     port = _free_port()
     data_dir = Path(settings.sites_root) / site.domain / "wp-content"
     data_dir.mkdir(parents=True, exist_ok=True)
     c = ds.run_container(
         image="wordpress:latest",
-        name=_slug(site.domain),
+        name=slug,
         ports={"80/tcp": port},
         env={
             "WORDPRESS_DB_HOST": db_name,
@@ -82,17 +94,15 @@ def deploy_wordpress(site: Site, admin_email: str | None = None) -> Site:
             "WORDPRESS_DB_NAME": "wordpress",
         },
         volumes={str(data_dir): "/var/www/html/wp-content"},
+        network=network,
     )
-    # Link app container to the db container's network alias.
-    try:
-        ds.client().networks.get("bridge").connect(db_name)
-    except Exception:
-        pass
     site.root_path = str(data_dir.parent)
     site.container_id = c["id"]
     site.upstream_port = port
     site.status = "running"
-    site.meta = json.dumps({"db_container": db_name, "admin_email": admin_email})
+    site.meta = json.dumps(
+        {"db_container": db_name, "db_volume": db_vol, "network": network, "admin_email": admin_email}
+    )
     return site
 
 
@@ -129,3 +139,23 @@ def deploy(site: Site, admin_email: str | None = None) -> Site:
     if site.kind not in DEPLOYERS:
         raise ValueError(f"unsupported site kind: {site.kind}")
     return DEPLOYERS[site.kind](site, admin_email)
+
+
+def teardown(site: Site) -> None:
+    """Remove the app container plus any side containers/network it created."""
+    if site.container_id:
+        try:
+            ds.container_action(site.container_id, "remove")
+        except Exception:
+            pass
+    try:
+        meta = json.loads(site.meta or "{}")
+    except (ValueError, TypeError):
+        meta = {}
+    if meta.get("db_container"):
+        try:
+            ds.container_action(meta["db_container"], "remove")
+        except Exception:
+            pass
+    if meta.get("network"):
+        ds.remove_network(meta["network"])

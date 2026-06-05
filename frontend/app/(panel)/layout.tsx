@@ -18,6 +18,7 @@ import {
   KeyRound,
   Server,
   Settings,
+  ShieldAlert,
   LogOut,
 } from "lucide-react";
 
@@ -31,6 +32,7 @@ const NAV = [
   { href: "/cron", label: "排程任務", icon: Clock },
   { href: "/terminal", label: "終端機", icon: SquareTerminal },
   { href: "/ssh", label: "SSH 主機", icon: KeyRound },
+  { href: "/security", label: "登入紀錄", icon: ShieldAlert },
   { href: "/settings", label: "設定", icon: Settings },
 ];
 

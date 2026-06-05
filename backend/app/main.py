@@ -26,24 +26,48 @@ from app.models.models import User
 def _ensure_columns() -> None:
     """Tiny additive migration: add new columns to existing tables (SQLite)."""
     inspector = inspect(engine)
-    if "users" not in inspector.get_table_names():
-        return
-    existing = {c["name"] for c in inspector.get_columns("users")}
-    additions = {
-        "totp_secret": "VARCHAR(64) DEFAULT ''",
-        "totp_enabled": "BOOLEAN DEFAULT 0",
+    tables = set(inspector.get_table_names())
+    per_table = {
+        "users": {
+            "totp_secret": "VARCHAR(64) DEFAULT ''",
+            "totp_enabled": "BOOLEAN DEFAULT 0",
+            # Bumped on password/username change so old JWTs stop validating.
+            "token_version": "INTEGER DEFAULT 0",
+        },
+        "ssh_hosts": {
+            # Trust-on-first-use host key pin: "<keytype> <base64>".
+            "host_key": "TEXT DEFAULT ''",
+        },
     }
     with engine.begin() as conn:
-        for col, ddl in additions.items():
-            if col not in existing:
-                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {ddl}"))
+        for table, additions in per_table.items():
+            if table not in tables:
+                continue
+            existing = {c["name"] for c in inspector.get_columns(table)}
+            for col, ddl in additions.items():
+                if col not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
 
 
 def init_db() -> None:
+    from app.core.config import DEFAULT_INSECURE_PASSWORD
+
     Base.metadata.create_all(bind=engine)
     _ensure_columns()
     with SessionLocal() as db:
         if not db.scalar(select(User)):
+            # Refuse to bootstrap the first admin with the insecure default
+            # password — that would leave a publicly-known credential that grants
+            # full host control through the panel.
+            if (
+                settings.admin_password == DEFAULT_INSECURE_PASSWORD
+                and not settings.allow_insecure_secret
+            ):
+                raise RuntimeError(
+                    "Refusing to create the bootstrap admin with the default "
+                    "password. Set DENNY_ADMIN_PASSWORD to a strong value, or set "
+                    "DENNY_ALLOW_INSECURE_SECRET=true for local dev only."
+                )
             db.add(
                 User(
                     username=settings.admin_username,
@@ -93,6 +117,11 @@ async def security_headers(request, call_next):
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    # API only ever returns JSON; lock the document down so a stolen response
+    # body can't be coerced into executing script.
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+    )
     return response
 
 

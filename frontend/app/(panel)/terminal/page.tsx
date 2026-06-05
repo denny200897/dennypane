@@ -41,11 +41,14 @@ export default function TerminalPage() {
       fit.fit();
 
       const token = getToken();
-      ws = new WebSocket(`${wsBase()}/api/terminal/ws?token=${token}`);
+      // Token is sent as the first WS message (not in the URL) so it can't leak
+      // into reverse-proxy access logs or browser history.
+      ws = new WebSocket(`${wsBase()}/api/terminal/ws`);
       ws.binaryType = "arraybuffer";
 
       ws.onopen = () => {
         setStatus("已連線");
+        ws.send(`\x00auth:${token ?? ""}`);
         ws.send(`\x00resize:${term.rows}:${term.cols}`);
       };
       ws.onmessage = (e) => {

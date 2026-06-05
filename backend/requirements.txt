@@ -9,5 +9,6 @@ bcrypt==4.2.1
 docker==7.1.0
 psutil==6.1.1
 paramiko==3.5.0
+cryptography==44.0.0
 pyotp==2.9.0
 httpx==0.28.1

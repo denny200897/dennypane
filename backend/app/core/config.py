@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 DEFAULT_INSECURE_SECRET = "change-me-in-production-please-use-a-long-random-string"
+DEFAULT_INSECURE_PASSWORD = "dennypanel"
 
 
 class Settings(BaseSettings):
@@ -27,7 +28,16 @@ class Settings(BaseSettings):
 
     # First-run admin bootstrap (only used if no users exist yet)
     admin_username: str = "admin"
-    admin_password: str = "dennypanel"
+    admin_password: str = DEFAULT_INSECURE_PASSWORD
+
+    # Number of trusted reverse proxies in front of the app. When 0 (default),
+    # the client's X-Forwarded-For header is IGNORED and the real socket peer is
+    # used for rate-limiting, so a spoofed header can't bypass the login lockout.
+    # Behind the bundled nginx/Caddy proxy, set DENNY_TRUSTED_PROXIES=1.
+    trusted_proxies: int = 0
+
+    # Allowed parent directory for FTP/SFTP account home dirs (defense in depth).
+    ftp_home_root: str = "/home"
 
     database_url: str = f"sqlite:///{Path(__file__).resolve().parents[2] / 'dennypanel.db'}"
 

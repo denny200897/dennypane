@@ -59,11 +59,7 @@ def delete_site(site_id: int, db: Session = Depends(get_db), _: User = Depends(g
     if not site:
         raise HTTPException(404, "Site not found")
     proxy_service.remove_vhost(site.domain)
-    if site.container_id:
-        try:
-            ds.container_action(site.container_id, "remove")
-        except Exception:
-            pass
+    apps_service.teardown(site)
     db.delete(site)
     db.commit()
     return {"ok": True}

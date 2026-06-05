@@ -3,6 +3,7 @@ import subprocess
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_current_user
+from app.core import audit
 from app.models.models import User
 from app.schemas.schemas import CronJobCreate
 from app.services import cron_service
@@ -24,8 +25,9 @@ def list_jobs(_: User = Depends(get_current_user)):
 
 
 @router.post("/jobs")
-def add_job(body: CronJobCreate, _: User = Depends(get_current_user)):
+def add_job(body: CronJobCreate, user: User = Depends(get_current_user)):
     _guard()
+    audit.log("cron.add", subject=user.username, label=body.label)
     return cron_service.add_job(body.schedule, body.command, body.label)
 
 
