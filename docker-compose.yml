@@ -20,10 +20,12 @@ services:
       DENNY_ADMIN_PASSWORD: ${DENNY_ADMIN_PASSWORD:?set DENNY_ADMIN_PASSWORD in .env}
       DENNY_DATABASE_URL: sqlite:////data/dennypanel.db
       DENNY_SITES_ROOT: /opt/dennypanel/sites
-      # Behind the bundled Caddy proxy (client -> Caddy -> backend = 1 hop), so
-      # trust the last X-Forwarded-For entry to log the real client IP instead
-      # of Caddy's fixed internal address.
-      DENNY_TRUSTED_PROXIES: ${DENNY_TRUSTED_PROXIES:-1}
+      # Two trusted proxy hops in front of the backend: the LAN edge proxy
+      # (terminates TLS for the public domain) -> the bundled nginx -> backend.
+      # The backend therefore sees X-Forwarded-For "<real client>, <edge>" and
+      # must take the 2nd-from-right entry to log the real client IP instead of
+      # the edge/nginx internal address. Bump this if you add another proxy.
+      DENNY_TRUSTED_PROXIES: ${DENNY_TRUSTED_PROXIES:-2}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock   # manage host Docker
       - denny_data:/data                            # SQLite DB
