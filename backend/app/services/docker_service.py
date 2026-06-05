@@ -2,9 +2,15 @@
 from __future__ import annotations
 
 import os
+import re
 
 import docker
 from docker.errors import DockerException, NotFound
+
+# Docker's own volume-name grammar. Used to validate non-absolute volume sources
+# so a crafted name (containing slashes / "..") can't be coerced into a bind
+# mount that would dodge the host-path denylist below.
+_VOLUME_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,254}$")
 
 _client: docker.DockerClient | None = None
 
@@ -135,6 +141,10 @@ def run_container(
     for src, cont in (volumes or {}).items():
         if src.startswith("/"):
             _check_host_path(src)
+        elif not _VOLUME_NAME_RE.match(src):
+            # Not an absolute path and not a valid volume name — reject rather
+            # than hand an ambiguous source to Docker.
+            raise UnsafeMount(f"invalid volume source: {src}")
         vol[src] = {"bind": cont, "mode": "rw"}
     c = client().containers.run(
         image,

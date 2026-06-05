@@ -56,15 +56,20 @@ def login(
 ):
     ip = client_ip(request)
     ua = request.headers.get("user-agent", "")
-    if db.scalar(select(BlockedIP).where(BlockedIP.ip == ip)):
-        _record_login(db, username=form.username, ip=ip, user_agent=ua, success=False, reason="blocked")
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "您的 IP 位址已被封鎖")
-    blocked = ratelimit.is_blocked(ip)
-    if blocked:
+    # Rate-limit FIRST so a flood of requests (from any IP, blocked or not) can't
+    # drive unbounded login_event inserts and fill the disk. Once an IP trips the
+    # limiter it short-circuits here before touching the DB.
+    cooldown = ratelimit.is_blocked(ip)
+    if cooldown:
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,
-            f"登入嘗試過於頻繁，請於 {blocked} 秒後再試",
+            f"登入嘗試過於頻繁，請於 {cooldown} 秒後再試",
         )
+    if db.scalar(select(BlockedIP).where(BlockedIP.ip == ip)):
+        # Count blocked hits as failures so repeated probing gets throttled too.
+        ratelimit.record_failure(ip)
+        _record_login(db, username=form.username, ip=ip, user_agent=ua, success=False, reason="blocked")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "您的 IP 位址已被封鎖")
     user = db.scalar(select(User).where(User.username == form.username))
     password_ok = (
         verify_password(form.password, user.password_hash)
