@@ -199,6 +199,16 @@ class FTPAccountCreate(BaseModel):
             raise ValueError("使用者名稱不合法（小寫字母開頭，僅限字母、數字、_、-）")
         return v
 
+    @field_validator("password")
+    @classmethod
+    def _no_control(cls, v: str) -> str:
+        # The password is piped to `chpasswd` as "<user>:<password>\n"; a newline
+        # would let an extra "<user>:<password>" line through and reset arbitrary
+        # system accounts (e.g. root). Block CR/LF/NUL, mirroring the cron guard.
+        if any(c in v for c in "\r\n\x00"):
+            raise ValueError("密碼不可包含換行或控制字元")
+        return v
+
     @field_validator("home_dir")
     @classmethod
     def _valid_home_dir(cls, v: str) -> str:
