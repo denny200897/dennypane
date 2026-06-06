@@ -172,4 +172,13 @@ export const api = {
   dbServers: () => request<any[]>("/databases/servers"),
   dbDatabases: (id: string) =>
     request<{ engine: string; databases: string[] }>(`/databases/servers/${id}/databases`),
+
+  // AI assistant
+  assistantStatus: () =>
+    request<{ enabled: boolean; model: string }>("/assistant/status"),
+  assistantChat: (messages: { role: "user" | "assistant"; content: string }[]) =>
+    request<{ reply: string }>("/assistant/chat", {
+      method: "POST",
+      body: JSON.stringify({ messages }),
+    }),
 };

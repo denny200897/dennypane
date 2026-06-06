@@ -50,6 +50,21 @@ class TwoFADisable(BaseModel):
     password: str
 
 
+# ---- AI assistant ----
+class ChatMessage(BaseModel):
+    role: str
+    content: str = Field(min_length=1, max_length=8000)
+
+
+class ChatRequest(BaseModel):
+    # Cap the conversation so a single request can't balloon token usage.
+    messages: list[ChatMessage] = Field(min_length=1, max_length=30)
+
+
+class ChatReply(BaseModel):
+    reply: str
+
+
 # ---- Login history / IP blocking ----
 class LoginEventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)

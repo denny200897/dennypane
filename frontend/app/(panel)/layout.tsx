@@ -19,11 +19,13 @@ import {
   Server,
   Settings,
   ShieldAlert,
+  Sparkles,
   LogOut,
 } from "lucide-react";
 
 const NAV = [
   { href: "/", label: "儀表板", icon: LayoutDashboard },
+  { href: "/assistant", label: "AI 助手", icon: Sparkles },
   { href: "/containers", label: "容器", icon: Box },
   { href: "/sites", label: "網站與應用", icon: Globe },
   { href: "/files", label: "檔案管理", icon: FolderTree },

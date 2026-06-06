@@ -26,6 +26,10 @@ services:
       # must take the 2nd-from-right entry to log the real client IP instead of
       # the edge/nginx internal address. Bump this if you add another proxy.
       DENNY_TRUSTED_PROXIES: ${DENNY_TRUSTED_PROXIES:-2}
+      # AI assistant (optional). Key stays server-side; never sent to browser.
+      DENNY_ASSISTANT_API_KEY: ${DENNY_ASSISTANT_API_KEY:-}
+      DENNY_ASSISTANT_BASE_URL: ${DENNY_ASSISTANT_BASE_URL:-}
+      DENNY_ASSISTANT_MODEL: ${DENNY_ASSISTANT_MODEL:-gpt-4o-mini}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock   # manage host Docker
       - denny_data:/data                            # SQLite DB

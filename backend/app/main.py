@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, select, text
 
 from app.api.routes import (
+    assistant,
     auth,
     cron,
     databases,
@@ -145,6 +146,7 @@ for r in (
     cron.router,
     databases.router,
     terminal.router,
+    assistant.router,
 ):
     app.include_router(r, prefix=api_prefix)
 

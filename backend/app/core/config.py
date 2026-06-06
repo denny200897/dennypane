@@ -48,6 +48,21 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
+    # --- AI assistant (optional) ---
+    # NewAPI / any OpenAI-compatible endpoint. The key is read ONLY here on the
+    # server and is never sent to the browser; the frontend talks to our own
+    # /api/assistant/chat proxy. Leave the key empty to disable the feature.
+    assistant_api_key: str = ""
+    assistant_base_url: str = ""  # e.g. https://your-newapi.example.com/v1
+    assistant_model: str = "gpt-4o-mini"
+    assistant_timeout_seconds: int = 60
+    # Cap each request so a single chat can't run up an unbounded token bill.
+    assistant_max_tokens: int = 1024
+
+    @property
+    def assistant_enabled(self) -> bool:
+        return bool(self.assistant_api_key and self.assistant_base_url)
+
 
 @lru_cache
 def get_settings() -> Settings:
