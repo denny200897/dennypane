@@ -106,9 +106,23 @@ async def terminal_ws(ws: WebSocket):
     auth_text = first.get("text") or ""
     token = auth_text[len(AUTH_PREFIX):] if auth_text.startswith(AUTH_PREFIX) else ""
     payload = decode_access_token(token)
-    if not payload:
+    if not payload or not payload.get("sub"):
         await ws.close(code=4401)
         return
+    # Honour token revocation the same way the HTTP API does: a token minted
+    # before the user's last credential change (token_version bump) must NOT be
+    # able to open a host shell, otherwise changing your password fails to cut
+    # off an already-leaked session here.
+    from sqlalchemy import select
+
+    from app.db.session import SessionLocal
+    from app.models.models import User
+
+    with SessionLocal() as db:
+        user = db.scalar(select(User).where(User.username == payload["sub"]))
+        if not user or payload.get("ver", 0) != user.token_version:
+            await ws.close(code=4401)
+            return
     if _ip_blocked(ws):
         await ws.close(code=4403)
         return
