@@ -30,6 +30,9 @@ services:
       DENNY_ASSISTANT_API_KEY: ${DENNY_ASSISTANT_API_KEY:-}
       DENNY_ASSISTANT_BASE_URL: ${DENNY_ASSISTANT_BASE_URL:-}
       DENNY_ASSISTANT_MODEL: ${DENNY_ASSISTANT_MODEL:-gpt-4o-mini}
+      # Reasoning models (e.g. gemini-2.5-flash) spend many tokens "thinking"
+      # before the answer; keep this high enough to fit reasoning + reply.
+      DENNY_ASSISTANT_MAX_TOKENS: ${DENNY_ASSISTANT_MAX_TOKENS:-2048}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock   # manage host Docker
       - denny_data:/data                            # SQLite DB
